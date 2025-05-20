@@ -1,0 +1,9 @@
+package test:logging@1.1.1;
+
+interface logger {
+    log: func(msg: string);
+}
+
+world logging {
+    export logger;
+}

@@ -1,0 +1,13 @@
+package test:application@0.4.0;
+
+interface greeter {
+    hello: func() -> string;
+    set-name: func(name: string);
+}
+
+world application {
+    import test:kvstore/store@2.0.0;
+    import test:logging/logger@1.0.0;
+
+    export greeter;
+}
