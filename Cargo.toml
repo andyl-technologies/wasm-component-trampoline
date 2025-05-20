@@ -1,0 +1,24 @@
+[package]
+name = "wac-trampoline"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = [
+    "async"
+]
+async = [
+    "wasmtime/async",
+    "wasmtime/component-model-async",
+]
+
+[dependencies]
+anyhow = "1"
+derivative = "2"
+indexmap = "2"
+petgraph = "0.8"
+semver = "1"
+slab = "0.4"
+snafu = "0.8"
+wac-types = "0.6"
+wasmtime = { version = "32", features = ["component-model"] }
