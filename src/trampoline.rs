@@ -1,8 +1,11 @@
-use crate::graph::InterfacePath;
+use crate::ForeignInterfacePath;
+use derivative::Derivative;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::Arc;
+use wac_types::FuncType;
 use wasmtime::StoreContextMut;
 use wasmtime::component::{Func, Val};
 
@@ -19,13 +22,25 @@ fn _assert_trampoline_object_safe(_object: &dyn Trampoline<()>) {
     unreachable!("only used for compile time assertion");
 }
 
-pub trait AsyncTrampoline<D: Send, C: Send = ()>: Send + Sync + 'static {
+pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     fn bounce_async<'c>(
-        &self,
+        &'c self,
         call: AsyncGuestCall<'c, D, C>,
     ) -> Pin<Box<dyn Future<Output = Result<GuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
     {
         Box::pin(async move { call.call_async().await })
+    }
+}
+
+impl<D: Send + 'static, C: Send + Sync + 'static> AsyncTrampoline<D, C>
+    for Arc<dyn AsyncTrampoline<D, C>>
+{
+    fn bounce_async<'c>(
+        &'c self,
+        call: AsyncGuestCall<'c, D, C>,
+    ) -> Pin<Box<dyn Future<Output = Result<GuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
+    {
+        Box::pin(async move { self.bounce_async(call).await })
     }
 }
 
@@ -35,9 +50,10 @@ fn _assert_async_trampoline_object_safe(_object: &dyn AsyncTrampoline<()>) {
 
 pub struct GuestCallData<'c, D, C> {
     store: StoreContextMut<'c, D>,
-    context: &'c mut C,
-    path: &'c InterfacePath,
+    context: &'c C,
+    path: &'c ForeignInterfacePath,
     method: &'c str,
+    ty: &'c FuncType,
     arguments: &'c [Val],
     results: &'c mut [Val],
 }
@@ -47,11 +63,11 @@ impl<'c, D, C> GuestCallData<'c, D, C> {
         &mut self.store
     }
 
-    pub fn context(&mut self) -> &mut C {
+    pub fn context(&mut self) -> &C {
         self.context
     }
 
-    pub fn interface(&self) -> &InterfacePath {
+    pub fn interface(&self) -> &ForeignInterfacePath {
         self.path
     }
 
@@ -85,6 +101,7 @@ impl<'c, D, C> GuestCall<'c, D, C> {
                 context: self.data.context,
                 path: self.data.path,
                 method: self.data.method,
+                ty: self.data.ty,
                 arguments,
                 results,
             },
@@ -127,6 +144,7 @@ impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
                 context: self.data.context,
                 path: self.data.path,
                 method: self.data.method,
+                ty: self.data.ty,
                 arguments,
                 results,
             },
@@ -246,7 +264,40 @@ pub struct InterfaceTrampoline<T, C> {
     context: C,
 }
 
-pub trait DynPackageTrampoline<D, C> {
+impl<T, C> InterfaceTrampoline<T, C> {
+    pub async fn bounce_async<'c, D>(
+        &'c self,
+        function: Func,
+        store: StoreContextMut<'c, D>,
+        path: &'c ForeignInterfacePath,
+        method: &'c str,
+        ty: &'c FuncType,
+        arguments: &'c [Val],
+        results: &'c mut [Val],
+    ) -> Result<GuestResult<'c, D, C>, anyhow::Error>
+    where
+        D: Send,
+        C: Send + Sync,
+        T: AsyncTrampoline<D, C>,
+    {
+        self.trampoline
+            .bounce_async(AsyncGuestCall {
+                data: GuestCallData {
+                    store,
+                    context: &self.context,
+                    path,
+                    method,
+                    ty,
+                    arguments,
+                    results,
+                },
+                function,
+            })
+            .await
+    }
+}
+
+pub trait DynPackageTrampoline<D, C: Clone> {
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C>;
 }
 
@@ -257,14 +308,16 @@ impl<D, C: Clone> DynPackageTrampoline<D, C> for PackageTrampoline<Rc<dyn Trampo
 }
 
 impl<D, C: Clone> DynPackageTrampoline<D, C>
-    for PackageTrampoline<Rc<dyn AsyncTrampoline<D, C>>, C>
+    for PackageTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>
 {
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C> {
         DynInterfaceTrampoline::Async(self.interface_trampoline(interface_name))
     }
 }
 
-pub enum DynInterfaceTrampoline<D, C> {
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""))]
+pub enum DynInterfaceTrampoline<D, C: Clone> {
     Sync(InterfaceTrampoline<Rc<dyn Trampoline<D, C>>, C>),
-    Async(InterfaceTrampoline<Rc<dyn AsyncTrampoline<D, C>>, C>),
+    Async(InterfaceTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>),
 }
