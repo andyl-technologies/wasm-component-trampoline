@@ -67,14 +67,17 @@ impl<'c, D, C> GuestCallData<'c, D, C> {
         self.context
     }
 
+    #[must_use]
     pub fn interface(&self) -> &ForeignInterfacePath {
         self.path
     }
 
+    #[must_use]
     pub fn method(&self) -> &str {
         self.method
     }
 
+    #[must_use]
     pub fn arguments(&self) -> &[Val] {
         self.arguments
     }
@@ -117,7 +120,7 @@ impl<'c, D, C> Deref for GuestCall<'c, D, C> {
     }
 }
 
-impl<'c, D, C> DerefMut for GuestCall<'c, D, C> {
+impl<D, C> DerefMut for GuestCall<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
@@ -160,7 +163,7 @@ impl<'c, D: Send, C> Deref for AsyncGuestCall<'c, D, C> {
     }
 }
 
-impl<'c, D: Send, C> DerefMut for AsyncGuestCall<'c, D, C> {
+impl<D: Send, C> DerefMut for AsyncGuestCall<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
@@ -170,7 +173,8 @@ pub struct GuestResult<'c, D, C> {
     context: GuestCallData<'c, D, C>,
 }
 
-impl<'c, D, C> GuestResult<'c, D, C> {
+impl<D, C> GuestResult<'_, D, C> {
+    #[must_use]
     pub fn results(&self) -> &[Val] {
         self.context.results
     }
@@ -188,7 +192,7 @@ impl<'c, D, C> Deref for GuestResult<'c, D, C> {
     }
 }
 
-impl<'c, D, C> DerefMut for GuestResult<'c, D, C> {
+impl<D, C> DerefMut for GuestResult<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.context
     }

@@ -25,6 +25,7 @@ pub struct CompositionGraph<D, C: Clone = ()> {
 }
 
 impl<D, C: Clone> CompositionGraph<D, C> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -55,10 +56,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         let package = self.packages.get_mut(package_id.id).unwrap();
 
         let package_prefix = format!("{}/", package.name());
-        let version_suffix = package
-            .version()
-            .map(|v| format!("@{}", v))
-            .unwrap_or("".to_string());
+        let version_suffix = package.version().map_or(String::new(), |v| format!("@{v}"));
 
         let exports = &self.types[package.ty()].exports;
 
@@ -86,7 +84,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 {
                     // This would be a programming error, since the package name/version tuple is
                     // guaranteed to be unique.
-                    panic!("duplicate exported interface key {:?}", path);
+                    panic!("duplicate exported interface key {path:?}");
                 }
             }
         }
@@ -149,7 +147,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .package_load_order(package, &mut interfaces)
             .context(instantiate_error::LoadPackageSnafu)?;
 
-        for package in load_order.into_iter() {
+        for package in load_order {
             self.instantiate_package(
                 package,
                 linker,
@@ -157,7 +155,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 engine,
                 interfaces
                     .get(&package)
-                    .map(|v| v.as_slice())
+                    .map(Vec::as_slice)
                     .unwrap_or_default(),
             )
             .await
@@ -184,7 +182,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 let mut cycle = load_stack
                     .iter()
                     .skip(cycle_start)
-                    .cloned()
+                    .copied()
                     .collect::<Vec<_>>();
 
                 cycle.push(package_id);
@@ -201,8 +199,8 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             let imports = self
                 .imported_interfaces
                 .get(&package_id)
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
+                .map(Vec::as_slice)
+                .unwrap_or_default();
 
             for import in imports {
                 let version_map = self.package_map.get(import.package_name()).ok_or_else(|| {
