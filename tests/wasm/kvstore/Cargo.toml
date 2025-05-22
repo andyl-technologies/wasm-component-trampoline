@@ -1,0 +1,7 @@
+[package]
+name = "kvstore"
+version = "2.1.6"
+edition = "2024"
+
+[dependencies]
+wit-bindgen = "0.42"

@@ -102,3 +102,40 @@ fn version_alternate(version: &Version) -> Option<Version> {
         Some(Version::new(0, 0, version.patch))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use semver::Version;
+
+    #[test]
+    fn test_version_map() {
+        let mut map = VersionMap::new();
+
+        let version0 = Version::new(0, 4, 2);
+        let version1 = Version::new(1, 0, 0);
+        let version2 = Version::new(1, 0, 1);
+        let version3 = Version::new(2, 0, 0);
+
+        map.try_insert(version0.clone(), "value0").unwrap();
+        map.try_insert(version1.clone(), "value1").unwrap();
+        map.try_insert(version2.clone(), "value2").unwrap();
+        map.try_insert(version3.clone(), "value3").unwrap();
+
+        assert_eq!(map.get(&version0), Some(&"value0"));
+        assert_eq!(map.get(&version1), Some(&"value2"));
+        assert_eq!(map.get(&version2), Some(&"value2"));
+        assert_eq!(map.get(&version3), Some(&"value3"));
+
+        assert_eq!(map.get(&Version::new(0, 1, 0)), None);
+        assert_eq!(map.get(&Version::new(0, 4, 1)), Some(&"value0"));
+        assert_eq!(map.get(&Version::new(1, 1, 0)), Some(&"value2"));
+        assert_eq!(map.get(&Version::new(2, 0, 4)), Some(&"value3"));
+        assert_eq!(map.get(&Version::new(3, 0, 0)), None);
+
+        assert_eq!(map.get_exact(&version1), Some(&"value1"));
+
+        assert_eq!(map.get_or_latest(None), Some(&"value3"));
+        assert_eq!(map.get_or_latest(Some(&version1)), Some(&"value2"));
+    }
+}

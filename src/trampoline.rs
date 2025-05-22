@@ -1,4 +1,4 @@
-use crate::ForeignInterfacePath;
+use crate::path::ForeignInterfacePath;
 use derivative::Derivative;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};

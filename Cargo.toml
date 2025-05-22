@@ -16,7 +16,6 @@ async = [
 anyhow = "1"
 derivative = "2"
 indexmap = "2"
-petgraph = "0.8"
 semver = "1"
 slab = "0.4"
 snafu = "0.8"

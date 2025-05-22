@@ -1,0 +1,12 @@
+package test:kvstore@2.1.6;
+
+interface store {
+    set: func(key: string, value: string);
+    get: func(key: string) -> option<string>;
+}
+
+world kvstore {
+    import test:logging/logger@1.1.0;
+
+    export store;
+}

@@ -1,3 +1,4 @@
+use crate::path::{ForeignInterfacePath, InterfacePath, InterfacePathParseError};
 use crate::semver::VersionMap;
 use crate::{DynInterfaceTrampoline, DynPackageTrampoline};
 use derivative::Derivative;
@@ -67,11 +68,11 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 .and_then(|export_name| export_name.strip_suffix(&version_suffix));
 
             if let Some(interface_name) = interface_name {
-                let path = ForeignInterfacePath {
-                    package_name: package.name().to_string(),
-                    interface_name: interface_name.to_string(),
-                    version: package.version().cloned(),
-                };
+                let path = ForeignInterfacePath::new(
+                    package.name().to_string(),
+                    interface_name.to_string(),
+                    package.version().cloned(),
+                );
 
                 let interface_trampoline = InterfaceExport {
                     package: package_id,
@@ -131,7 +132,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(package_id)
     }
 
-    pub async fn instantiate_package(
+    pub async fn instantiate(
         &mut self,
         package: PackageId,
         linker: &mut component::Linker<D>,
@@ -142,66 +143,14 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         D: Send + 'static,
         C: Send + Sync + 'static,
     {
-        let mut package_stack = vec![(package, 0)];
-
-        let mut load_order = IndexSet::<PackageId>::new();
-        let mut load_stack = IndexSet::<PackageId>::new();
         let mut interfaces = IndexMap::<PackageId, Vec<String>>::new();
 
-        while let Some((package_id, offset)) = package_stack.pop() {
-            load_order.extend(load_stack.drain(offset..).rev());
-
-            if let Some(cycle_start) = load_stack.get_index_of(&package_id) {
-                let mut cycle = load_stack
-                    .iter()
-                    .skip(cycle_start)
-                    .cloned()
-                    .collect::<Vec<_>>();
-
-                cycle.push(package_id);
-
-                return Err(InstantiateError::PackageCycle { cycle });
-            }
-
-            if load_order.contains(&package_id) {
-                continue;
-            }
-
-            load_stack.insert(package_id);
-
-            let imports = self
-                .imported_interfaces
-                .get(&package_id)
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
-
-            for import in imports {
-                let version_map = self.package_map.get(&import.package_name).ok_or_else(|| {
-                    InstantiateError::MissingPackage {
-                        package_name: import.package_name.to_string(),
-                    }
-                })?;
-
-                let import_package = version_map
-                    .get_or_latest(import.version.as_ref())
-                    .ok_or_else(|| InstantiateError::CannotResolvePackageVersion {
-                        name: import.package_name.to_string(),
-                        version: import.version.clone(),
-                    })?;
-
-                package_stack.push((*import_package, load_stack.len()));
-
-                interfaces
-                    .entry(*import_package)
-                    .or_default()
-                    .push(import.interface_name.clone());
-            }
-        }
-
-        load_order.extend(load_stack.into_iter().rev());
+        let load_order = self
+            .package_load_order(package, &mut interfaces)
+            .context(instantiate_error::LoadPackageSnafu)?;
 
         for package in load_order.into_iter() {
-            self.instantiate_individual_package(
+            self.instantiate_package(
                 package,
                 linker,
                 &mut store,
@@ -218,7 +167,71 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(())
     }
 
-    async fn instantiate_individual_package(
+    fn package_load_order(
+        &self,
+        origin: PackageId,
+        interfaces: &mut IndexMap<PackageId, Vec<String>>,
+    ) -> Result<impl IntoIterator<Item = PackageId> + 'static, LoadPackageError> {
+        let mut package_stack = vec![(origin, 0)];
+
+        let mut load_order = IndexSet::<PackageId>::new();
+        let mut load_stack = IndexSet::<PackageId>::new();
+
+        while let Some((package_id, offset)) = package_stack.pop() {
+            load_order.extend(load_stack.drain(offset..).rev());
+
+            if let Some(cycle_start) = load_stack.get_index_of(&package_id) {
+                let mut cycle = load_stack
+                    .iter()
+                    .skip(cycle_start)
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                cycle.push(package_id);
+
+                return Err(LoadPackageError::PackageCycle { cycle });
+            }
+
+            if load_order.contains(&package_id) {
+                continue;
+            }
+
+            load_stack.insert(package_id);
+
+            let imports = self
+                .imported_interfaces
+                .get(&package_id)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+
+            for import in imports {
+                let version_map = self.package_map.get(import.package_name()).ok_or_else(|| {
+                    LoadPackageError::MissingPackage {
+                        package_name: import.package_name().to_string(),
+                    }
+                })?;
+
+                let import_package =
+                    version_map.get_or_latest(import.version()).ok_or_else(|| {
+                        LoadPackageError::CannotResolvePackageVersion {
+                            name: import.package_name().to_string(),
+                            version: import.version().cloned(),
+                        }
+                    })?;
+
+                package_stack.push((*import_package, load_stack.len()));
+
+                interfaces
+                    .entry(*import_package)
+                    .or_default()
+                    .push(import.interface_name().to_string());
+            }
+        }
+
+        Ok(load_order.into_iter().chain(load_stack.into_iter().rev()))
+    }
+
+    async fn instantiate_package(
         &mut self,
         package: PackageId,
         linker: &mut component::Linker<D>,
@@ -257,11 +270,11 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 });
             };
 
-            let interface_path = ForeignInterfacePath {
-                package_name: package.name().to_string(),
-                interface_name: interface_name.to_string(),
-                version: package.version().cloned(),
-            };
+            let interface_path = ForeignInterfacePath::new(
+                package.name().to_string(),
+                interface_name.to_string(),
+                package.version().cloned(),
+            );
 
             let interface_export =
                 self.exported_interfaces
@@ -328,101 +341,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct ForeignInterfacePath {
-    package_name: String,
-    interface_name: String,
-    version: Option<Version>,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct InterfacePath {
-    package_name: Option<String>,
-    interface_name: String,
-    version: Option<Version>,
-}
-
-impl InterfacePath {
-    pub fn package_name(&self) -> Option<&str> {
-        self.package_name.as_ref().map(|n| n.as_str())
-    }
-
-    pub fn interface_name(&self) -> &str {
-        &self.interface_name
-    }
-
-    pub fn version(&self) -> Option<&Version> {
-        self.version.as_ref()
-    }
-
-    pub fn into_foreign(self) -> Option<ForeignInterfacePath> {
-        Some(ForeignInterfacePath {
-            package_name: self.package_name?,
-            interface_name: self.interface_name,
-            version: self.version,
-        })
-    }
-}
-
-impl FromStr for InterfacePath {
-    type Err = InterfacePathParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Parses the following format: "package_name/interface_name@version",
-        // where the version specifier is optional.
-
-        let parts: Vec<&str> = s.split('/').collect();
-
-        match parts.len() {
-            1 if s.contains('@') => return Err(InterfacePathParseError::FormatError),
-            1 => {
-                return Ok(Self {
-                    package_name: None,
-                    interface_name: s.to_string(),
-                    version: None,
-                });
-            }
-            2 => (), // Continue below.
-            _ => return Err(InterfacePathParseError::FormatError),
-        }
-
-        let package_name = parts[0].to_string();
-
-        let interface_parts: Vec<&str> = parts[1].split('@').collect();
-        let interface_name = interface_parts[0].to_string();
-
-        let version = if interface_parts.len() == 2 {
-            Some(
-                Version::parse(interface_parts[1])
-                    .context(interface_path_parse_error::VersionParseSnafu)?,
-            )
-        } else {
-            None
-        };
-
-        Ok(InterfacePath {
-            package_name: Some(package_name),
-            interface_name,
-            version,
-        })
-    }
-}
-
-#[derive(Snafu, Debug)]
-#[snafu(module)]
-pub enum InterfacePathParseError {
-    FormatError,
-    VersionParseError { source: semver::Error },
-}
-
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct PackageId {
     id: usize,
-}
-
-#[derive(Debug)]
-struct InterfaceImport {
-    interface: InterfacePath,
 }
 
 #[derive(Derivative)]
@@ -432,12 +353,6 @@ struct InterfaceExport<D, C: Clone> {
 
     #[derivative(Debug = "ignore")]
     trampoline: DynInterfaceTrampoline<D, C>,
-}
-
-#[derive(Debug)]
-struct PackageLoadOperation {
-    package: PackageId,
-    dependencies: Vec<PackageId>,
 }
 
 #[derive(Snafu, Debug)]
@@ -461,6 +376,18 @@ pub enum AddPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiateError {
+    LoadPackageError {
+        source: LoadPackageError,
+    },
+    InstantiatePackageError {
+        package: PackageId,
+        source: InstantiatePackageError,
+    },
+}
+
+#[derive(Snafu, Debug)]
+#[snafu(module)]
+pub enum LoadPackageError {
     PackageCycle {
         cycle: Vec<PackageId>,
     },
@@ -470,10 +397,6 @@ pub enum InstantiateError {
     CannotResolvePackageVersion {
         name: String,
         version: Option<Version>,
-    },
-    InstantiatePackageError {
-        package: PackageId,
-        source: InstantiatePackageError,
     },
 }
 
