@@ -5,7 +5,8 @@ wit_bindgen::generate!({
     generate_all,
 });
 
-static mut GLOBAL_MAP: LazyLock<HashMap<String, String>> = LazyLock::default();
+// Safety: This is a single-threaded application, so we can safely mutate the global map.
+static mut GLOBAL_MAP: LazyLock<HashMap<String, String>> = LazyLock::new(HashMap::new);
 
 #[derive(Debug)]
 pub struct Store;

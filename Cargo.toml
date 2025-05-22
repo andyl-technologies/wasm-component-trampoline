@@ -1,3 +1,9 @@
+[workspace]
+members = [
+  "tests/runner",
+  "tests/wasm/*",
+]
+
 [package]
 name = "wac-trampoline"
 version = "0.1.0"
