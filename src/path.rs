@@ -10,18 +10,14 @@ pub struct ForeignInterfacePath {
 }
 
 impl ForeignInterfacePath {
-    pub fn new(
-        package_name: String,
-        interface_name: String,
-        version: Option<Version>,
-    ) -> Self {
+    pub fn new(package_name: String, interface_name: String, version: Option<Version>) -> Self {
         ForeignInterfacePath {
             package_name,
             interface_name,
             version,
         }
     }
-    
+
     pub fn package_name(&self) -> &str {
         self.package_name.as_ref()
     }
@@ -64,7 +60,7 @@ impl InterfacePath {
             version,
         }
     }
-    
+
     pub fn package_name(&self) -> Option<&str> {
         self.package_name.as_ref().map(|n| n.as_str())
     }
