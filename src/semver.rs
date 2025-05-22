@@ -207,7 +207,26 @@ mod tests {
     use semver::Version;
 
     #[test]
-    fn test_version_map() {
+    fn test_version_map_basic_operations() {
+        let mut map = VersionMap::new();
+
+        let version0 = Version::new(0, 4, 2);
+        let version1 = Version::new(1, 0, 0);
+        let version2 = Version::new(1, 0, 1);
+        let version3 = Version::new(2, 0, 0);
+
+        // Test insertions
+        assert!(map.try_insert(version0.clone(), "value0").is_ok());
+        assert!(map.try_insert(version1.clone(), "value1").is_ok());
+        assert!(map.try_insert(version2.clone(), "value2").is_ok());
+        assert!(map.try_insert(version3.clone(), "value3").is_ok());
+
+        // Test duplicate insertion
+        assert!(map.try_insert(version1.clone(), "duplicate").is_err());
+    }
+
+    #[test]
+    fn test_version_map_alternate_lookups() {
         let mut map = VersionMap::new();
 
         let version0 = Version::new(0, 4, 2);
@@ -220,20 +239,93 @@ mod tests {
         map.try_insert(version2.clone(), "value2").unwrap();
         map.try_insert(version3.clone(), "value3").unwrap();
 
+        // Test exact matches
         assert_eq!(map.get(&version0), Some(&"value0"));
-        assert_eq!(map.get(&version1), Some(&"value2"));
         assert_eq!(map.get(&version2), Some(&"value2"));
         assert_eq!(map.get(&version3), Some(&"value3"));
 
+        // Test alternate matches (should get latest in group)
+        assert_eq!(map.get(&version1), Some(&"value2")); // 1.0.0 -> latest in 1.x.x group
+        assert_eq!(map.get(&Version::new(0, 4, 1)), Some(&"value0")); // 0.4.1 -> latest in 0.4.x group
+        assert_eq!(map.get(&Version::new(1, 1, 0)), Some(&"value2")); // 1.1.0 -> latest in 1.x.x group
+        assert_eq!(map.get(&Version::new(2, 0, 4)), Some(&"value3")); // 2.0.4 -> latest in 2.x.x group
+
+        // Test non-existent versions
         assert_eq!(map.get(&Version::new(0, 1, 0)), None);
-        assert_eq!(map.get(&Version::new(0, 4, 1)), Some(&"value0"));
-        assert_eq!(map.get(&Version::new(1, 1, 0)), Some(&"value2"));
-        assert_eq!(map.get(&Version::new(2, 0, 4)), Some(&"value3"));
         assert_eq!(map.get(&Version::new(3, 0, 0)), None);
 
+        // Test exact lookups
         assert_eq!(map.get_exact(&version1), Some(&"value1"));
+        assert_eq!(map.get_exact(&Version::new(1, 1, 0)), None); // No exact match
+    }
 
-        assert_eq!(map.get_or_latest(None), Some(&"value3"));
-        assert_eq!(map.get_or_latest(Some(&version1)), Some(&"value2"));
+    #[test]
+    fn test_version_map_latest_operations() {
+        let mut map = VersionMap::new();
+
+        assert_eq!(map.get_latest(), None);
+        assert_eq!(map.get_or_latest(None), None);
+
+        map.insert(Version::new(1, 0, 0), "v1.0.0");
+        map.insert(Version::new(2, 0, 0), "v2.0.0");
+        map.insert(Version::new(0, 1, 0), "v0.1.0");
+
+        assert_eq!(map.get_latest(), Some((&Version::new(2, 0, 0), &"v2.0.0")));
+        assert_eq!(map.get_or_latest(None), Some(&"v2.0.0"));
+        assert_eq!(
+            map.get_or_latest(Some(&Version::new(1, 0, 0))),
+            Some(&"v1.0.0")
+        );
+    }
+
+    #[test]
+    fn test_version_map_insert_and_removal() {
+        let mut map = VersionMap::new();
+
+        let v1 = Version::new(1, 0, 0);
+        let v2 = Version::new(1, 0, 1);
+
+        map.insert(v1.clone(), "v1");
+        map.insert(v2.clone(), "v2");
+
+        assert_eq!(map.remove(&v1), Some("v1"));
+        assert_eq!(map.remove(&v1), None); // Already removed
+    }
+
+    #[test]
+    fn test_version_alternate_function() {
+        // Pre-release versions have no alternates
+        let pre = Version::parse("1.0.0-alpha").unwrap();
+        assert_eq!(version_alternate(&pre), None);
+
+        // Major versions > 0
+        assert_eq!(
+            version_alternate(&Version::new(1, 2, 3)),
+            Some(Version::new(1, 0, 0))
+        );
+        assert_eq!(
+            version_alternate(&Version::new(2, 5, 1)),
+            Some(Version::new(2, 0, 0))
+        );
+
+        // Minor versions > 0 (when major is 0)
+        assert_eq!(
+            version_alternate(&Version::new(0, 1, 5)),
+            Some(Version::new(0, 1, 0))
+        );
+        assert_eq!(
+            version_alternate(&Version::new(0, 3, 2)),
+            Some(Version::new(0, 3, 0))
+        );
+
+        // Patch versions (when major and minor are 0)
+        assert_eq!(
+            version_alternate(&Version::new(0, 0, 1)),
+            Some(Version::new(0, 0, 1))
+        );
+        assert_eq!(
+            version_alternate(&Version::new(0, 0, 5)),
+            Some(Version::new(0, 0, 5))
+        );
     }
 }
