@@ -11,7 +11,7 @@ impl exports::test::application::greeter::Guest for Store {
         format!("Hello {}!", name)
     }
 
-    fn set_name(name: String) -> () {
+    fn set_name(name: String) {
         test::logging::logger::log(format!("setting name to {}", name).as_str());
         test::kvstore::store::set("name", name.as_str());
     }

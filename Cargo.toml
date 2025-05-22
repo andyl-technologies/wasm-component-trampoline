@@ -1,3 +1,10 @@
+[workspace]
+resolver = "3"
+members = [
+  "tests/runner",
+  "tests/wasm/[a-z]*",
+]
+
 [package]
 name = "wasm-trampoline"
 authors = ["ANDYL Open Source <oss@andyl.com>"]
