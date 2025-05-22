@@ -3,5 +3,8 @@ name = "kvstore"
 version = "2.1.6"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 wit-bindgen = "0.42"
