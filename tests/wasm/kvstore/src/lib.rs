@@ -13,7 +13,7 @@ static GLOBAL_MAP: LazyLock<Mutex<HashMap<String, String>>> =
 pub struct Store;
 
 impl exports::test::kvstore::store::Guest for Store {
-    fn set(key: String, value: String) -> () {
+    fn set(key: String, value: String) {
         if let Ok(mut map) = GLOBAL_MAP.lock() {
             map.insert(key, value);
         }

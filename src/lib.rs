@@ -1,3 +1,5 @@
+#![cfg(not(target_family = "wasm"))]
+
 mod graph;
 mod path;
 mod semver;

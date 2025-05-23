@@ -391,6 +391,7 @@ pub enum LoadPackageError {
     PackageCycle {
         cycle: Vec<PackageId>,
     },
+    #[snafu(display("Package {} not found", package_name))]
     MissingPackage {
         package_name: String,
     },
@@ -420,6 +421,12 @@ pub enum InstantiatePackageError {
         source: anyhow::Error,
     },
     InvalidTrampolineSynchronicity,
+    #[snafu(display(
+        "Missing interface {}@{:?} in package {}",
+        interface_name,
+        package_version,
+        package_name
+    ))]
     MissingInterface {
         package_name: String,
         package_version: Option<Version>,
