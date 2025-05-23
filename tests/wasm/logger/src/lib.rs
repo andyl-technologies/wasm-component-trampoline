@@ -4,7 +4,7 @@ wit_bindgen::generate!();
 pub struct Logger;
 
 impl exports::test::logging::logger::Guest for Logger {
-    fn log(msg: String) {
+    fn log(_msg: String) {
         todo!()
     }
 }
