@@ -23,3 +23,5 @@ impl exports::test::kvstore::store::Guest for Store {
         unsafe { GLOBAL_MAP.get(&key).cloned() }
     }
 }
+
+export!(Store);

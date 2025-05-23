@@ -16,3 +16,5 @@ impl exports::test::application::greeter::Guest for Store {
         test::kvstore::store::set("name", name.as_str());
     }
 }
+
+export!(Store);
