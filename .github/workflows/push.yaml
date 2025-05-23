@@ -1,0 +1,17 @@
+name: pushes and pull requests
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  devenv-test:
+    uses: ./.github/workflows/devenv.yaml
+    with:
+      devenv-target: test --log-format tracing-pretty
