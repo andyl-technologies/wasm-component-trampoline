@@ -1,5 +1,8 @@
 #[cfg(target_family = "wasm")]
-fn main() {}
+fn main() {
+    // This is a no-op for the wasm target, as the main function is not used.
+    eprintln!("This is a WebAssembly target, no main function to run.");
+}
 
 #[cfg(not(target_family = "wasm"))]
 #[tokio::main]
