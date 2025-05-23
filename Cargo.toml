@@ -33,4 +33,4 @@ indexmap = "2"
 slab = "0.4"
 snafu = "0.8"
 wac-types = "0.6"
-wasmtime = { version = "32", features = ["component-model"] }
+wasmtime = { version = "33", features = ["component-model"] }
