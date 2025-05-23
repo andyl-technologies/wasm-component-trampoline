@@ -1,0 +1,40 @@
+name: devenv workflow
+on:
+  workflow_call:
+    inputs:
+      devenv-target:
+        required: true
+        type: string
+
+jobs:
+  test:
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Sccache Action
+        uses: Mozilla-Actions/sccache-action@main
+      - name: Run sccache stat for check
+        shell: bash
+        run: ${SCCACHE_PATH} --show-stats
+      - name: Set up cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: install devenv
+        run: nix profile install nixpkgs#devenv
+      - name: run devenv target
+        run: devenv ${{ inputs.devenv-target }}
