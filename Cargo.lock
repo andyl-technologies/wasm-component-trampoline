@@ -1155,20 +1155,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "wac-trampoline"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "derivative",
- "indexmap",
- "semver",
- "slab",
- "snafu",
- "wac-types",
- "wasmtime",
-]
-
-[[package]]
 name = "wac-types"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1224,6 +1210,20 @@ checksum = "d4349d0943718e6e434b51b9639e876293093dca4b96384fb136ab5bd5ce6660"
 dependencies = [
  "leb128fmt",
  "wasmparser 0.230.0",
+]
+
+[[package]]
+name = "wasm-trampoline"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "derivative",
+ "indexmap",
+ "semver",
+ "slab",
+ "snafu",
+ "wac-types",
+ "wasmtime",
 ]
 
 [[package]]
