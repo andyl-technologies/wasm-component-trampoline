@@ -26,3 +26,5 @@ impl exports::test::kvstore::store::Guest for Store {
             .and_then(|map| map.get(&key).cloned())
     }
 }
+
+export!(Store);

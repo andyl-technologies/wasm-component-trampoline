@@ -8,3 +8,4 @@ impl exports::test::logging::logger::Guest for Logger {
         todo!()
     }
 }
+export!(Logger);
