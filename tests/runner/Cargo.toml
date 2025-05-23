@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [target.'cfg(unix)'.dependencies]
+anyhow = "1.0"
+semver = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+wasmtime = { version = "32", features = ["component-model", "async"] }
+wasmtime-wasi = { version = "32" }
 wasm-trampoline = { path = "../.." }
