@@ -15,14 +15,9 @@
 
   languages.rust.enable = true;
 
-  processes =
-    {
-    }
-    // lib.optionalAttrs (config.devenv.isTesting) {
-    }
-    // lib.optionalAttrs (!config.devenv.isTesting) {
-      cargo-watch.exec = "cargo-watch";
-    };
+  processes = lib.optionalAttrs (!config.devenv.isTesting) {
+    cargo-watch.exec = "cargo-watch";
+  };
 
   enterTest = ''
     cargo test --workspace
