@@ -1,5 +1,6 @@
 use semver::Version;
 use snafu::{ResultExt, Snafu};
+use std::fmt::Display;
 use std::str::FromStr;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -37,6 +38,20 @@ impl From<ForeignInterfacePath> for InterfacePath {
             package_name: Some(path.package_name),
             interface_name: path.interface_name,
             version: path.version,
+        }
+    }
+}
+
+impl Display for ForeignInterfacePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref version) = self.version {
+            write!(
+                f,
+                "{}/{}@{}",
+                self.package_name, self.interface_name, version
+            )
+        } else {
+            write!(f, "{}/{}", self.package_name, self.interface_name)
         }
     }
 }
@@ -126,10 +141,34 @@ impl FromStr for InterfacePath {
     }
 }
 
+impl Display for InterfacePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref version) = self.version {
+            write!(
+                f,
+                "{}/{}@{}",
+                self.package_name.as_ref().unwrap_or(&"".to_string()),
+                self.interface_name,
+                version
+            )
+        } else {
+            write!(
+                f,
+                "{}/{}",
+                self.package_name.as_ref().unwrap_or(&"".to_string()),
+                self.interface_name
+            )
+        }
+    }
+}
+
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InterfacePathParseError {
+    #[snafu(display("Invalid interface path format"))]
     FormatError,
+
+    #[snafu(display("Invalid semantic version format: {}", source))]
     VersionParseError { source: semver::Error },
 }
 

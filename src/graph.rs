@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
-use wac_types::{ItemKind, Package};
+use wac_types::{InterfaceId, ItemKind, Package};
 use wasmtime::component::Component;
 use wasmtime::{AsContextMut, component};
 
@@ -62,7 +62,11 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
         let exports = &self.types[package.ty()].exports;
 
-        for (export_name, _export_kind) in exports {
+        for (export_name, export_kind) in exports {
+            let ItemKind::Instance(interface_id) = export_kind else {
+                continue;
+            };
+
             let interface_name = export_name
                 .strip_prefix(&package_prefix)
                 .and_then(|export_name| export_name.strip_suffix(&version_suffix));
@@ -76,6 +80,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
                 let interface_trampoline = InterfaceExport {
                     package: package_id,
+                    interface: *interface_id,
                     trampoline: trampoline.interface_trampoline(interface_name),
                 };
 
@@ -161,7 +166,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                     .unwrap_or_default(),
             )
             .await
-            .context(instantiate_error::InstantiatePackageSnafu { package })?;
+            .context(instantiate_error::InstantiatePackageSnafu)?;
         }
 
         Ok(())
@@ -189,7 +194,17 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
                 cycle.push(package_id);
 
-                return Err(LoadPackageError::PackageCycle { cycle });
+                return Err(LoadPackageError::PackageCycle {
+                    cycle: cycle
+                        .into_iter()
+                        .map(|package| {
+                            self.packages
+                                .get(package.id)
+                                .map(|package| package.name().to_string())
+                                .unwrap_or("{{UNKNOWN_PACKAGE}}".to_string())
+                        })
+                        .collect(),
+                });
             }
 
             if load_order.contains(&package_id) {
@@ -206,7 +221,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
             for import in imports {
                 let version_map = self.package_map.get(import.package_name()).ok_or_else(|| {
-                    LoadPackageError::MissingPackage {
+                    LoadPackageError::MissingPackageDependency {
                         package_name: import.package_name().to_string(),
                     }
                 })?;
@@ -248,8 +263,6 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .get(package.id)
             .ok_or(InstantiatePackageError::PackageNotFound)?;
 
-        let package_ty = &self.types[package.ty()];
-
         let component = Component::new(engine, package.bytes())
             .context(instantiate_package_error::ComponentSnafu)?;
 
@@ -261,28 +274,25 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         let shadow_instance = Rc::new(shadow_instance);
 
         for interface_name in interfaces {
-            let Some(ItemKind::Instance(interface_id)) = package_ty.exports.get(interface_name)
-            else {
-                return Err(InstantiatePackageError::MissingInterface {
-                    package_name: package.name().to_string(),
-                    package_version: package.version().cloned(),
-                    interface_name: interface_name.to_string(),
-                });
-            };
-
             let interface_path = ForeignInterfacePath::new(
                 package.name().to_string(),
                 interface_name.to_string(),
                 package.version().cloned(),
             );
 
+            let interface_full_name = interface_path.to_string();
+
+            let shadow_interface_export_id = shadow_instance
+                .get_export(&mut store, None, &interface_full_name)
+                .ok_or_else(|| InstantiatePackageError::InstanceMissingInterfaceExport {
+                    interface_name: interface_full_name.to_string(),
+                })?;
+
             let interface_export =
                 self.exported_interfaces
                     .get(&interface_path)
-                    .ok_or_else(|| InstantiatePackageError::MissingInterface {
-                        package_name: package.name().to_string(),
-                        package_version: package.version().cloned(),
-                        interface_name: interface_name.to_string(),
+                    .ok_or_else(|| InstantiatePackageError::MissingInterfaceExport {
+                        path: interface_path.clone(),
                     })?;
 
             let DynInterfaceTrampoline::Async(trampoline) = &interface_export.trampoline else {
@@ -290,19 +300,29 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             };
 
             let mut front_instance = linker
-                .instance(format!("{}/{}", package.name(), interface_name).as_str())
+                .instance(interface_full_name.as_str())
                 .context(instantiate_package_error::LinkerInstanceSnafu)?;
 
-            let interface = &self.types[*interface_id];
+            let interface = &self.types[interface_export.interface];
 
             for (export_name, export_kind) in &interface.exports {
                 let ItemKind::Func(func_id) = export_kind else {
                     continue;
                 };
 
+                let shadow_func_export_id = shadow_instance
+                    .get_export(&mut store, Some(&shadow_interface_export_id), export_name)
+                    .ok_or_else(
+                        || InstantiatePackageError::InstanceMissingInterfaceFuncExport {
+                            interface_name: interface_full_name.to_string(),
+                            func_name: export_name.to_string(),
+                        },
+                    )?;
+
                 let shadow_func = shadow_instance
-                    .get_func(&mut store, export_name)
+                    .get_func(&mut store, &shadow_func_export_id)
                     .ok_or_else(|| InstantiatePackageError::ComponentFuncRetrievalError {
+                        interface_name: interface_full_name.to_string(),
                         func_name: export_name.to_string(),
                     })?;
 
@@ -350,6 +370,7 @@ pub struct PackageId {
 #[derivative(Debug(bound = ""))]
 struct InterfaceExport<D, C: Clone> {
     package: PackageId,
+    interface: InterfaceId,
 
     #[derivative(Debug = "ignore")]
     trampoline: DynInterfaceTrampoline<D, C>,
@@ -376,25 +397,23 @@ pub enum AddPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiateError {
-    LoadPackageError {
-        source: LoadPackageError,
-    },
-    InstantiatePackageError {
-        package: PackageId,
-        source: InstantiatePackageError,
-    },
+    #[snafu(display("Failed to load package: {}", source))]
+    LoadPackageError { source: LoadPackageError },
+
+    #[snafu(display("Failed to instantiate package: {}", source))]
+    InstantiatePackageError { source: InstantiatePackageError },
 }
 
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum LoadPackageError {
-    PackageCycle {
-        cycle: Vec<PackageId>,
-    },
-    #[snafu(display("Package {} not found", package_name))]
-    MissingPackage {
-        package_name: String,
-    },
+    #[snafu(display("Package import cycle detected: {:?}", cycle))]
+    PackageCycle { cycle: Vec<String> },
+
+    #[snafu(display("Package dependency {} not found", package_name))]
+    MissingPackageDependency { package_name: String },
+
+    #[snafu(display("Cannot resolve package version for {}@{:?}", name, version))]
     CannotResolvePackageVersion {
         name: String,
         version: Option<Version>,
@@ -404,32 +423,47 @@ pub enum LoadPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiatePackageError {
+    #[snafu(display("Package not found"))]
     PackageNotFound,
-    ComponentError {
-        source: anyhow::Error,
-    },
-    ComponentInstantiationError {
-        source: anyhow::Error,
-    },
-    LinkerInstanceError {
-        source: anyhow::Error,
-    },
-    ComponentFuncRetrievalError {
+
+    #[snafu(display("Failed to create wasm component: {}", source))]
+    ComponentError { source: anyhow::Error },
+
+    #[snafu(display("Failed to instantiate wasm component: {}", source))]
+    ComponentInstantiationError { source: anyhow::Error },
+
+    #[snafu(display("Failed to create linker instance: {}", source))]
+    LinkerInstanceError { source: anyhow::Error },
+
+    #[snafu(display("Instance is missing interface export with name '{}'", interface_name))]
+    InstanceMissingInterfaceExport { interface_name: String },
+
+    #[snafu(display(
+        "Instance is missing interface func export with name '{}/{}'",
+        interface_name,
+        func_name
+    ))]
+    InstanceMissingInterfaceFuncExport {
+        interface_name: String,
         func_name: String,
     },
-    LinkFuncInstantiationError {
-        source: anyhow::Error,
-    },
-    InvalidTrampolineSynchronicity,
+
     #[snafu(display(
-        "Missing interface {}@{:?} in package {}",
+        "Failed to retrieve component function '{}/{}'",
         interface_name,
-        package_version,
-        package_name
+        func_name
     ))]
-    MissingInterface {
-        package_name: String,
-        package_version: Option<Version>,
+    ComponentFuncRetrievalError {
         interface_name: String,
+        func_name: String,
     },
+
+    #[snafu(display("Failed to instantiate function: {}", source))]
+    LinkFuncInstantiationError { source: anyhow::Error },
+
+    #[snafu(display("Invalid trampoline sync/async call match"))]
+    InvalidTrampolineSynchronicity,
+
+    #[snafu(display("Missing interface export {}", path))]
+    MissingInterfaceExport { path: ForeignInterfacePath },
 }

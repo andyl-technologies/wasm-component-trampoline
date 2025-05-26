@@ -2,7 +2,11 @@
 
 {
     # https://devenv.sh/packages/
-    packages = [ pkgs.git ];
+    packages = with pkgs; [
+        git
+        lld
+        wasm-tools
+    ];
 
     # https://devenv.sh/languages/
     languages.rust.enable = true;
