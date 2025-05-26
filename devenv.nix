@@ -1,22 +1,30 @@
 {
   pkgs,
+  config,
+  lib,
   ...
 }:
 
 {
-  # https://devenv.sh/packages/
-  packages = [ pkgs.git ];
+  packages = [
+    pkgs.cargo-watch
+    pkgs.git
+  ];
 
-  # https://devenv.sh/languages/
   languages.rust.enable = true;
 
-  # https://devenv.sh/processes/
-  processes.cargo-watch.exec = "cargo-watch";
+  processes =
+    {
+    }
+    // lib.optionalAttrs (config.devenv.isTesting) {
+    }
+    // lib.optionalAttrs (!config.devenv.isTesting) {
+      cargo-watch.exec = "cargo-watch";
+    };
 
-  # https://devenv.sh/tests/
   enterTest = ''
-    cargo test
-    cargo fmt --check
+    cargo test --workspace
+    cargo fmt --check --all
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
