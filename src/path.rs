@@ -10,6 +10,7 @@ pub struct ForeignInterfacePath {
 }
 
 impl ForeignInterfacePath {
+    #[must_use]
     pub fn new(package_name: String, interface_name: String, version: Option<Version>) -> Self {
         ForeignInterfacePath {
             package_name,
@@ -18,14 +19,17 @@ impl ForeignInterfacePath {
         }
     }
 
+    #[must_use]
     pub fn package_name(&self) -> &str {
         self.package_name.as_ref()
     }
 
+    #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
     }
@@ -49,6 +53,7 @@ pub struct InterfacePath {
 }
 
 impl InterfacePath {
+    #[must_use]
     pub fn new(
         package_name: Option<String>,
         interface_name: String,
@@ -61,18 +66,22 @@ impl InterfacePath {
         }
     }
 
+    #[must_use]
     pub fn package_name(&self) -> Option<&str> {
-        self.package_name.as_ref().map(|n| n.as_str())
+        self.package_name.as_deref()
     }
 
+    #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
     }
 
+    #[must_use]
     pub fn into_foreign(self) -> Option<ForeignInterfacePath> {
         Some(ForeignInterfacePath {
             package_name: self.package_name?,
