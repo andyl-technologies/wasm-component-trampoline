@@ -19,5 +19,5 @@
     cargo fmt --check
   '';
 
-  # See full reference at https://devenv.sh/reference/options/
+  git-hooks.hooks.nixfmt-rfc-style.enable = true;
 }
