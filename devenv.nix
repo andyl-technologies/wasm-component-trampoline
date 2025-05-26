@@ -20,4 +20,5 @@
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
+  git-hooks.hooks.actionlint.enable = true;
 }
