@@ -9,12 +9,19 @@ async fn main() -> anyhow::Result<()> {
 
 #[cfg(not(target_family = "wasm"))]
 mod runner {
+    use anyhow::Error;
     use semver::Version;
     use std::path::Path;
+    use std::pin::Pin;
     use std::sync::Arc;
     use tokio::fs;
-    use wac_trampoline::{AsyncTrampoline, CompositionGraph};
+    use wac_trampoline::{AsyncGuestCall, AsyncTrampoline, CompositionGraph, GuestResultAsync};
     use wasmtime::{Config, Engine, Store, component::Linker};
+
+    wasmtime::component::bindgen!({
+        path: "../wasm/application/wit",
+        async: true,
+    });
 
     // Define our store data type
     #[derive(Debug)]
@@ -25,11 +32,36 @@ mod runner {
     // Simple async trampoline that just passes calls through
     struct PassthroughTrampoline /*<C: Clone + Sync + Send + 'static>*/ {}
 
-    impl AsyncTrampoline<AppData, ()> for PassthroughTrampoline {}
+    impl AsyncTrampoline<AppData, ()> for PassthroughTrampoline {
+        fn bounce_async<'c>(
+            &'c self,
+            call: AsyncGuestCall<'c, AppData, ()>,
+        ) -> Pin<
+            Box<dyn Future<Output = Result<GuestResultAsync<'c, AppData, ()>, Error>> + Send + 'c>,
+        > {
+            Box::pin(async move {
+                eprintln!(
+                    "Bounced call '{}#{}'",
+                    call.interface().to_string(),
+                    call.method()
+                );
+
+                let result = call.call_async().await?;
+
+                eprintln!(
+                    "Bounced return '{}#{}'",
+                    result.interface().to_string(),
+                    result.method()
+                );
+
+                Ok(result)
+            })
+        }
+    }
 
     // TODO(bill): directory from command line
     const WASM_DIR: &str = "target/wasm32-unknown-unknown/release/";
-    //
+
     // TODO(bill): packages from command line
     async fn add_package(
         graph: &mut CompositionGraph<AppData>,
@@ -91,14 +123,27 @@ mod runner {
         if verbose {
             eprintln!("graph: {graph:#?}");
         }
-        graph
+
+        let instance = graph
             .instantiate(app_id, &mut linker, &mut store, &engine)
             .await?;
+
         eprintln!("Components instantiated successfully.");
 
-        // TODO: Add code to interact with the instantiated components
-        // This would require generating bindings for the interfaces or using
-        // the low-level Wasmtime API to call the exported functions
+        let application = Application::new(&mut store, &instance)?;
+
+        application
+            .test_application_greeter()
+            .call_set_name(&mut store, "Dave")
+            .await?;
+
+        let hello = application
+            .test_application_greeter()
+            .call_hello(&mut store)
+            .await?;
+
+        println!("Greeter Output: {:?}", &hello);
+        assert_eq!(hello, "Hello Dave!");
 
         println!("Test completed successfully!");
         Ok(())

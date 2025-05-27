@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 use wac_types::{InterfaceId, ItemKind, Package};
-use wasmtime::component::Component;
+use wasmtime::component::{Component, Instance};
 use wasmtime::{AsContextMut, component};
 
 #[derive(Derivative, Debug)]
@@ -139,11 +139,11 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
     pub async fn instantiate(
         &mut self,
-        package: PackageId,
+        package_id: PackageId,
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
         engine: &wasmtime::Engine,
-    ) -> Result<(), InstantiateError>
+    ) -> Result<Instance, InstantiateError>
     where
         D: Send + 'static,
         C: Send + Sync + 'static,
@@ -151,25 +151,55 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         let mut interfaces = IndexMap::<PackageId, Vec<String>>::new();
 
         let load_order = self
-            .package_load_order(package, &mut interfaces)
+            .package_load_order(package_id, &mut interfaces)
             .context(instantiate_error::LoadPackageSnafu)?;
 
-        for package in load_order.into_iter() {
-            self.instantiate_package(
-                package,
+        let package = self
+            .packages
+            .get(package_id.id)
+            .ok_or(InstantiateError::PackageNotFound { id: package_id })?;
+
+        let component = Component::new(engine, package.bytes())
+            .context(instantiate_error::ComponentInstantiationSnafu)?;
+
+        for shadow_package_id in load_order.into_iter() {
+            if shadow_package_id == package_id {
+                break;
+            }
+
+            let shadow_package = self.packages.get(shadow_package_id.id).ok_or(
+                InstantiateError::PackageNotFound {
+                    id: shadow_package_id,
+                },
+            )?;
+
+            let shadow_interfaces = interfaces
+                .get(&shadow_package_id)
+                .map(|v| v.as_slice())
+                .unwrap_or_default();
+
+            self.instantiate_shadowed_package(
+                shadow_package,
                 linker,
                 &mut store,
                 engine,
-                interfaces
-                    .get(&package)
-                    .map(|v| v.as_slice())
-                    .unwrap_or_default(),
+                shadow_interfaces,
             )
             .await
-            .context(instantiate_error::InstantiatePackageSnafu)?;
+            .with_context(|_err| {
+                instantiate_error::InstantiatePackageDependencySnafu {
+                    name: shadow_package.name().to_string(),
+                    version: shadow_package.version().cloned(),
+                }
+            })?;
         }
 
-        Ok(())
+        let instance = linker
+            .instantiate_async(&mut store, &component)
+            .await
+            .context(instantiate_error::ComponentInstantiationSnafu)?;
+
+        Ok(instance)
     }
 
     fn package_load_order(
@@ -246,9 +276,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(load_order.into_iter().chain(load_stack.into_iter().rev()))
     }
 
-    async fn instantiate_package(
-        &mut self,
-        package: PackageId,
+    async fn instantiate_shadowed_package(
+        &self,
+        package: &Package,
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
         engine: &wasmtime::Engine,
@@ -258,13 +288,8 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         D: Send + 'static,
         C: Send + Sync + 'static,
     {
-        let package = self
-            .packages
-            .get(package.id)
-            .ok_or(InstantiatePackageError::PackageNotFound)?;
-
         let component = Component::new(engine, package.bytes())
-            .context(instantiate_package_error::ComponentSnafu)?;
+            .context(instantiate_package_error::ComponentInstantiationSnafu)?;
 
         let shadow_instance = linker
             .instantiate_async(&mut store, &component)
@@ -339,9 +364,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                         let ty = fn_ty.clone();
 
                         Box::new(async move {
-                            let _result = trampoline
+                            let mut result = trampoline
                                 .bounce_async(
-                                    shadow_func,
+                                    &shadow_func,
                                     store,
                                     interface_path.as_ref(),
                                     export_name.as_str(),
@@ -350,6 +375,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                                     result,
                                 )
                                 .await?;
+
+                            result.post_return_async().await?;
+
                             Ok(())
                         })
                     })
@@ -397,11 +425,26 @@ pub enum AddPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiateError {
+    #[snafu(display("Package id '{:?}' not found", id))]
+    PackageNotFound { id: PackageId },
+
     #[snafu(display("Failed to load package: {}", source))]
     LoadPackageError { source: LoadPackageError },
 
-    #[snafu(display("Failed to instantiate package: {}", source))]
-    InstantiatePackageError { source: InstantiatePackageError },
+    #[snafu(display(
+        "Failed to instantiate package depedency '{}@{:?}': {}",
+        name,
+        version,
+        source
+    ))]
+    InstantiatePackageDependencyError {
+        name: String,
+        version: Option<Version>,
+        source: InstantiatePackageError,
+    },
+
+    #[snafu(display("Failed to instantiate wasm component: {}", source))]
+    ComponentInstantiationError { source: anyhow::Error },
 }
 
 #[derive(Snafu, Debug)]
@@ -423,12 +466,6 @@ pub enum LoadPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiatePackageError {
-    #[snafu(display("Package not found"))]
-    PackageNotFound,
-
-    #[snafu(display("Failed to create wasm component: {}", source))]
-    ComponentError { source: anyhow::Error },
-
     #[snafu(display("Failed to instantiate wasm component: {}", source))]
     ComponentInstantiationError { source: anyhow::Error },
 

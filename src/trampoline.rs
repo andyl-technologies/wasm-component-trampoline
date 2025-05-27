@@ -26,7 +26,7 @@ pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     fn bounce_async<'c>(
         &'c self,
         call: AsyncGuestCall<'c, D, C>,
-    ) -> Pin<Box<dyn Future<Output = Result<GuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
+    ) -> Pin<Box<dyn Future<Output = Result<GuestResultAsync<'c, D, C>, anyhow::Error>> + Send + 'c>>
     {
         Box::pin(async move { call.call_async().await })
     }
@@ -38,9 +38,9 @@ impl<D: Send + 'static, C: Send + Sync + 'static> AsyncTrampoline<D, C>
     fn bounce_async<'c>(
         &'c self,
         call: AsyncGuestCall<'c, D, C>,
-    ) -> Pin<Box<dyn Future<Output = Result<GuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
+    ) -> Pin<Box<dyn Future<Output = Result<GuestResultAsync<'c, D, C>, anyhow::Error>> + Send + 'c>>
     {
-        Box::pin(async move { self.bounce_async(call).await })
+        Box::pin(async move { self.deref().bounce_async(call).await })
     }
 }
 
@@ -50,6 +50,7 @@ fn _assert_async_trampoline_object_safe(_object: &dyn AsyncTrampoline<()>) {
 
 pub struct GuestCallData<'c, D, C> {
     store: StoreContextMut<'c, D>,
+    function: &'c Func,
     context: &'c C,
     path: &'c ForeignInterfacePath,
     method: &'c str,
@@ -82,30 +83,14 @@ impl<'c, D, C> GuestCallData<'c, D, C> {
 
 pub struct GuestCall<'c, D, C> {
     data: GuestCallData<'c, D, C>,
-    function: Func,
 }
 
 impl<'c, D, C> GuestCall<'c, D, C> {
-    pub fn call(self) -> Result<GuestResult<'c, D, C>, anyhow::Error> {
-        let function = self.function;
+    pub fn call(mut self) -> Result<GuestResult<'c, D, C>, anyhow::Error> {
+        self.function
+            .call(&mut self.data.store, self.data.arguments, self.data.results)?;
 
-        let mut store = self.data.store;
-        let arguments = self.data.arguments;
-        let results = self.data.results;
-
-        function.call(&mut store, arguments, results)?;
-
-        Ok(GuestResult {
-            context: GuestCallData {
-                store,
-                context: self.data.context,
-                path: self.data.path,
-                method: self.data.method,
-                ty: self.data.ty,
-                arguments,
-                results,
-            },
-        })
+        Ok(GuestResult { context: self.data })
     }
 }
 
@@ -125,30 +110,15 @@ impl<'c, D, C> DerefMut for GuestCall<'c, D, C> {
 
 pub struct AsyncGuestCall<'c, D: Send, C> {
     data: GuestCallData<'c, D, C>,
-    function: Func,
 }
 
 impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
-    pub async fn call_async(self) -> Result<GuestResult<'c, D, C>, anyhow::Error> {
-        let function = self.function;
+    pub async fn call_async(mut self) -> Result<GuestResultAsync<'c, D, C>, anyhow::Error> {
+        self.function
+            .call_async(&mut self.data.store, self.data.arguments, self.data.results)
+            .await?;
 
-        let mut store = self.data.store;
-        let arguments = self.data.arguments;
-        let results = self.data.results;
-
-        function.call_async(&mut store, arguments, results).await?;
-
-        Ok(GuestResult {
-            context: GuestCallData {
-                store,
-                context: self.data.context,
-                path: self.data.path,
-                method: self.data.method,
-                ty: self.data.ty,
-                arguments,
-                results,
-            },
-        })
+        Ok(GuestResultAsync { context: self.data })
     }
 }
 
@@ -178,6 +148,10 @@ impl<'c, D, C> GuestResult<'c, D, C> {
     pub fn results_mut(&mut self) -> &mut [Val] {
         self.context.results
     }
+
+    pub(crate) async fn post_return(&mut self) -> Result<(), anyhow::Error> {
+        self.context.function.post_return(&mut self.context.store)
+    }
 }
 
 impl<'c, D, C> Deref for GuestResult<'c, D, C> {
@@ -189,6 +163,41 @@ impl<'c, D, C> Deref for GuestResult<'c, D, C> {
 }
 
 impl<'c, D, C> DerefMut for GuestResult<'c, D, C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.context
+    }
+}
+
+pub struct GuestResultAsync<'c, D: Send, C> {
+    context: GuestCallData<'c, D, C>,
+}
+
+impl<'c, D: Send, C> GuestResultAsync<'c, D, C> {
+    pub fn results(&self) -> &[Val] {
+        self.context.results
+    }
+
+    pub fn results_mut(&mut self) -> &mut [Val] {
+        self.context.results
+    }
+
+    pub(crate) async fn post_return_async(&mut self) -> Result<(), anyhow::Error> {
+        self.context
+            .function
+            .post_return_async(&mut self.context.store)
+            .await
+    }
+}
+
+impl<'c, D: Send, C> Deref for GuestResultAsync<'c, D, C> {
+    type Target = GuestCallData<'c, D, C>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+impl<'c, D: Send, C> DerefMut for GuestResultAsync<'c, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.context
     }
@@ -267,14 +276,14 @@ pub struct InterfaceTrampoline<T, C> {
 impl<T, C> InterfaceTrampoline<T, C> {
     pub async fn bounce_async<'c, D>(
         &'c self,
-        function: Func,
+        function: &'c Func,
         store: StoreContextMut<'c, D>,
         path: &'c ForeignInterfacePath,
         method: &'c str,
         ty: &'c FuncType,
         arguments: &'c [Val],
         results: &'c mut [Val],
-    ) -> Result<GuestResult<'c, D, C>, anyhow::Error>
+    ) -> Result<GuestResultAsync<'c, D, C>, anyhow::Error>
     where
         D: Send,
         C: Send + Sync,
@@ -284,6 +293,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
             .bounce_async(AsyncGuestCall {
                 data: GuestCallData {
                     store,
+                    function,
                     context: &self.context,
                     path,
                     method,
@@ -291,7 +301,6 @@ impl<T, C> InterfaceTrampoline<T, C> {
                     arguments,
                     results,
                 },
-                function,
             })
             .await
     }
