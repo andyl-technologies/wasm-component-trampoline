@@ -26,7 +26,7 @@ mod runner {
     // Define our store data type
     #[derive(Debug)]
     struct AppData {
-        // We could add application-specific data here if needed
+        stack_depth: usize,
     }
 
     // Simple async trampoline that just passes calls through
@@ -35,23 +35,29 @@ mod runner {
     impl AsyncTrampoline<AppData, ()> for PassthroughTrampoline {
         fn bounce_async<'c>(
             &'c self,
-            call: AsyncGuestCall<'c, AppData, ()>,
+            mut call: AsyncGuestCall<'c, AppData, ()>,
         ) -> Pin<
             Box<dyn Future<Output = Result<AsyncGuestResult<'c, AppData, ()>, Error>> + Send + 'c>,
         > {
             Box::pin(async move {
                 eprintln!(
-                    "Bounced call '{}#{}'",
+                    "[{}] Bounced call '{}#{}'",
+                    call.store().data().stack_depth,
                     call.interface().to_string(),
-                    call.method()
+                    call.method(),
                 );
 
-                let result = call.call_async().await?;
+                call.store_mut().data_mut().stack_depth += 1;
+
+                let mut result = call.call_async().await?;
+
+                result.store_mut().data_mut().stack_depth -= 1;
 
                 eprintln!(
-                    "Bounced return '{}#{}'",
+                    "[{}] Bounced return '{}#{}'",
+                    result.store().data().stack_depth,
                     result.interface().to_string(),
-                    result.method()
+                    result.method(),
                 );
 
                 Ok(result)
@@ -98,10 +104,11 @@ mod runner {
 
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
-        let mut store = Store::new(&engine, AppData {});
+        let mut store = Store::new(&engine, AppData { stack_depth: 0 });
 
         // Create our composition graph
         let mut graph = CompositionGraph::<AppData>::new();
+        
         // Load the logger component
         add_package(&mut graph, "logger", "test:logging", Version::new(1, 1, 1)).await?;
 

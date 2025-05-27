@@ -6,8 +6,8 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 use wac_types::FuncType;
-use wasmtime::StoreContextMut;
 use wasmtime::component::{Func, Val};
+use wasmtime::{AsContext, AsContextMut, StoreContext, StoreContextMut};
 
 pub trait Trampoline<D, C = ()>: Send + Sync + 'static {
     fn bounce<'c>(
@@ -69,8 +69,12 @@ pub struct GuestCallData<'c, D, C> {
 }
 
 impl<'c, D, C> GuestCallData<'c, D, C> {
-    pub fn store(&mut self) -> &mut StoreContextMut<'c, D> {
-        &mut self.store
+    pub fn store(&self) -> StoreContext<'_, D> {
+        self.store.as_context()
+    }
+
+    pub fn store_mut(&mut self) -> StoreContextMut<'_, D> {
+        self.store.as_context_mut()
     }
 
     pub fn context(&mut self) -> &C {
@@ -83,6 +87,10 @@ impl<'c, D, C> GuestCallData<'c, D, C> {
 
     pub fn method(&self) -> &str {
         self.method
+    }
+
+    pub fn func_type(&self) -> &FuncType {
+        self.ty
     }
 
     pub fn arguments(&self) -> &[Val] {

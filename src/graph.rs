@@ -148,7 +148,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         D: 'static,
         C: Send + Sync + 'static,
     {
-        let mut interfaces = IndexMap::<PackageId, Vec<String>>::new();
+        let mut interfaces = IndexMap::<PackageId, IndexSet<String>>::new();
 
         let load_order = self
             .package_load_order(package_id, &mut interfaces)
@@ -173,10 +173,8 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 },
             )?;
 
-            let shadow_interfaces = interfaces
-                .get(&shadow_package_id)
-                .map(|v| v.as_slice())
-                .unwrap_or_default();
+            let empty_set = IndexSet::new();
+            let shadow_interfaces = interfaces.get(&shadow_package_id).unwrap_or(&empty_set);
 
             self.instantiate_shadowed_package(
                 shadow_package,
@@ -211,7 +209,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         D: Send + 'static,
         C: Send + Sync + 'static,
     {
-        let mut interfaces = IndexMap::<PackageId, Vec<String>>::new();
+        let mut interfaces = IndexMap::<PackageId, IndexSet<String>>::new();
 
         let load_order = self
             .package_load_order(package_id, &mut interfaces)
@@ -236,17 +234,15 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 },
             )?;
 
-            let shadow_interfaces = interfaces
-                .get(&shadow_package_id)
-                .map(|v| v.as_slice())
-                .unwrap_or_default();
+            let empty_set = IndexSet::new();
+            let shadow_interfaces = interfaces.get(&shadow_package_id).unwrap_or(&empty_set);
 
             self.instantiate_shadowed_package_async(
                 shadow_package,
                 linker,
                 &mut store,
                 engine,
-                shadow_interfaces,
+                &shadow_interfaces,
             )
             .await
             .with_context(|_err| {
@@ -268,7 +264,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
     fn package_load_order(
         &self,
         origin: PackageId,
-        interfaces: &mut IndexMap<PackageId, Vec<String>>,
+        interfaces: &mut IndexMap<PackageId, IndexSet<String>>,
     ) -> Result<impl IntoIterator<Item = PackageId> + 'static, LoadPackageError> {
         let mut package_stack = vec![(origin, 0)];
 
@@ -332,7 +328,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 interfaces
                     .entry(*import_package)
                     .or_default()
-                    .push(import.interface_name().to_string());
+                    .insert(import.interface_name().to_string());
             }
         }
 
@@ -345,7 +341,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
         engine: &wasmtime::Engine,
-        interfaces: &[String],
+        interfaces: &IndexSet<String>,
     ) -> Result<(), InstantiatePackageError>
     where
         D: 'static,
@@ -374,7 +370,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
         engine: &wasmtime::Engine,
-        interfaces: &[String],
+        interfaces: &IndexSet<String>,
     ) -> Result<(), InstantiatePackageError>
     where
         D: Send + 'static,
@@ -404,7 +400,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         shadow_instance: Rc<Instance>,
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
-        interfaces: &[String],
+        interfaces: &IndexSet<String>,
         shadower: impl InstanceShadower<D, C>,
     ) -> Result<(), InstantiatePackageError> {
         for interface_name in interfaces {
@@ -649,7 +645,7 @@ pub enum InstantiateError {
     LoadPackageError { source: LoadPackageError },
 
     #[snafu(display(
-        "Failed to instantiate package depedency '{}@{:?}': {}",
+        "Failed to instantiate package dependency '{}@{:?}': {}",
         name,
         version,
         source

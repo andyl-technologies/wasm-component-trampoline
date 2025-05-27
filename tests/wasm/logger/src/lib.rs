@@ -5,7 +5,8 @@ pub struct Logger;
 
 impl exports::test::logging::logger::Guest for Logger {
     fn log(msg: String) {
-        println!("[LOGGER] {}", msg);
+        println(format!("[LOG]: {msg}").as_str());
     }
 }
+
 export!(Logger);
