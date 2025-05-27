@@ -15,7 +15,7 @@ mod runner {
     use std::pin::Pin;
     use std::sync::Arc;
     use tokio::fs;
-    use wac_trampoline::{AsyncGuestCall, AsyncTrampoline, CompositionGraph, GuestResultAsync};
+    use wac_trampoline::{AsyncGuestCall, AsyncGuestResult, AsyncTrampoline, CompositionGraph};
     use wasmtime::{Config, Engine, Store, component::Linker};
 
     wasmtime::component::bindgen!({
@@ -37,7 +37,7 @@ mod runner {
             &'c self,
             call: AsyncGuestCall<'c, AppData, ()>,
         ) -> Pin<
-            Box<dyn Future<Output = Result<GuestResultAsync<'c, AppData, ()>, Error>> + Send + 'c>,
+            Box<dyn Future<Output = Result<AsyncGuestResult<'c, AppData, ()>, Error>> + Send + 'c>,
         > {
             Box::pin(async move {
                 eprintln!(
@@ -125,7 +125,7 @@ mod runner {
         }
 
         let instance = graph
-            .instantiate(app_id, &mut linker, &mut store, &engine)
+            .instantiate_async(app_id, &mut linker, &mut store, &engine)
             .await?;
 
         eprintln!("Components instantiated successfully.");

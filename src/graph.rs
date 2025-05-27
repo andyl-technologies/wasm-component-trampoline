@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 use wac_types::{InterfaceId, ItemKind, Package};
-use wasmtime::component::{Component, Instance};
+use wasmtime::component::{Component, Instance, LinkerInstance};
 use wasmtime::{AsContextMut, component};
 
 #[derive(Derivative, Debug)]
@@ -137,7 +137,70 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(package_id)
     }
 
-    pub async fn instantiate(
+    pub fn instantiate(
+        &mut self,
+        package_id: PackageId,
+        linker: &mut component::Linker<D>,
+        mut store: impl AsContextMut<Data = D>,
+        engine: &wasmtime::Engine,
+    ) -> Result<Instance, InstantiateError>
+    where
+        D: 'static,
+        C: Send + Sync + 'static,
+    {
+        let mut interfaces = IndexMap::<PackageId, Vec<String>>::new();
+
+        let load_order = self
+            .package_load_order(package_id, &mut interfaces)
+            .context(instantiate_error::LoadPackageSnafu)?;
+
+        let package = self
+            .packages
+            .get(package_id.id)
+            .ok_or(InstantiateError::PackageNotFound { id: package_id })?;
+
+        let component = Component::new(engine, package.bytes())
+            .context(instantiate_error::ComponentInstantiationSnafu)?;
+
+        for shadow_package_id in load_order.into_iter() {
+            if shadow_package_id == package_id {
+                break;
+            }
+
+            let shadow_package = self.packages.get(shadow_package_id.id).ok_or(
+                InstantiateError::PackageNotFound {
+                    id: shadow_package_id,
+                },
+            )?;
+
+            let shadow_interfaces = interfaces
+                .get(&shadow_package_id)
+                .map(|v| v.as_slice())
+                .unwrap_or_default();
+
+            self.instantiate_shadowed_package(
+                shadow_package,
+                linker,
+                &mut store,
+                engine,
+                shadow_interfaces,
+            )
+            .with_context(|_err| {
+                instantiate_error::InstantiatePackageDependencySnafu {
+                    name: shadow_package.name().to_string(),
+                    version: shadow_package.version().cloned(),
+                }
+            })?;
+        }
+
+        let instance = linker
+            .instantiate(&mut store, &component)
+            .context(instantiate_error::ComponentInstantiationSnafu)?;
+
+        Ok(instance)
+    }
+
+    pub async fn instantiate_async(
         &mut self,
         package_id: PackageId,
         linker: &mut component::Linker<D>,
@@ -178,7 +241,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 .map(|v| v.as_slice())
                 .unwrap_or_default();
 
-            self.instantiate_shadowed_package(
+            self.instantiate_shadowed_package_async(
                 shadow_package,
                 linker,
                 &mut store,
@@ -276,7 +339,36 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(load_order.into_iter().chain(load_stack.into_iter().rev()))
     }
 
-    async fn instantiate_shadowed_package(
+    fn instantiate_shadowed_package(
+        &self,
+        package: &Package,
+        linker: &mut component::Linker<D>,
+        mut store: impl AsContextMut<Data = D>,
+        engine: &wasmtime::Engine,
+        interfaces: &[String],
+    ) -> Result<(), InstantiatePackageError>
+    where
+        D: 'static,
+        C: Send + Sync + 'static,
+    {
+        let component = Component::new(engine, package.bytes())
+            .context(instantiate_package_error::ComponentInstantiationSnafu)?;
+
+        let shadow_instance = linker
+            .instantiate(&mut store, &component)
+            .context(instantiate_package_error::ComponentInstantiationSnafu)?;
+
+        self.shadow_package(
+            package,
+            Rc::new(shadow_instance),
+            linker,
+            store,
+            interfaces,
+            SyncInstanceShadower,
+        )
+    }
+
+    async fn instantiate_shadowed_package_async(
         &self,
         package: &Package,
         linker: &mut component::Linker<D>,
@@ -296,8 +388,25 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .await
             .context(instantiate_package_error::ComponentInstantiationSnafu)?;
 
-        let shadow_instance = Rc::new(shadow_instance);
+        self.shadow_package(
+            package,
+            Rc::new(shadow_instance),
+            linker,
+            store,
+            interfaces,
+            AsyncInstanceShadower,
+        )
+    }
 
+    fn shadow_package(
+        &self,
+        package: &Package,
+        shadow_instance: Rc<Instance>,
+        linker: &mut component::Linker<D>,
+        mut store: impl AsContextMut<Data = D>,
+        interfaces: &[String],
+        shadower: impl InstanceShadower<D, C>,
+    ) -> Result<(), InstantiatePackageError> {
         for interface_name in interfaces {
             let interface_path = ForeignInterfacePath::new(
                 package.name().to_string(),
@@ -319,10 +428,6 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                     .ok_or_else(|| InstantiatePackageError::MissingInterfaceExport {
                         path: interface_path.clone(),
                     })?;
-
-            let DynInterfaceTrampoline::Async(trampoline) = &interface_export.trampoline else {
-                return Err(InstantiatePackageError::InvalidTrampolineSynchronicity);
-            };
 
             let mut front_instance = linker
                 .instance(interface_full_name.as_str())
@@ -351,12 +456,126 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                         func_name: export_name.to_string(),
                     })?;
 
-                let fn_export_name = Arc::new(export_name.to_string());
-                let fn_trampoline = trampoline.clone();
-                let fn_interface_path = Arc::new(interface_path.clone());
-                let fn_ty = Arc::new(self.types[*func_id].clone());
+                shadower.shadow_func(
+                    &mut front_instance,
+                    export_name,
+                    shadow_func,
+                    interface_path.clone(),
+                    self.types[*func_id].clone(),
+                    &interface_export.trampoline,
+                )?;
+            }
+        }
 
-                front_instance
+        Ok(())
+    }
+}
+
+trait InstanceShadower<D, C: Clone> {
+    fn shadow_func(
+        &self,
+        instance: &mut LinkerInstance<D>,
+        export_name: &str,
+        shadow_func: component::Func,
+        interface_path: ForeignInterfacePath,
+        func_ty: wac_types::FuncType,
+        trampoline: &DynInterfaceTrampoline<D, C>,
+    ) -> Result<(), InstantiatePackageError>;
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+struct SyncInstanceShadower;
+
+impl<D: 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C> for SyncInstanceShadower {
+    fn shadow_func(
+        &self,
+        instance: &mut LinkerInstance<D>,
+        export_name: &str,
+        shadow_func: component::Func,
+        interface_path: ForeignInterfacePath,
+        func_ty: wac_types::FuncType,
+        trampoline: &DynInterfaceTrampoline<D, C>,
+    ) -> Result<(), InstantiatePackageError> {
+        let fn_export_name = Arc::new(export_name.to_string());
+        let fn_interface_path = Arc::new(interface_path);
+        let fn_ty = Arc::new(func_ty);
+
+        match &trampoline {
+            DynInterfaceTrampoline::Sync(trampoline) => {
+                let fn_trampoline = trampoline.clone();
+
+                instance
+                    .func_new(export_name, move |store, arguments, result| {
+                        let mut result = fn_trampoline.bounce(
+                            &shadow_func,
+                            store,
+                            fn_interface_path.as_ref(),
+                            fn_export_name.as_str(),
+                            fn_ty.as_ref(),
+                            arguments,
+                            result,
+                        )?;
+
+                        result.post_return()?;
+
+                        Ok(())
+                    })
+                    .context(instantiate_package_error::LinkFuncInstantiationSnafu)
+            }
+
+            DynInterfaceTrampoline::Async(_trampoline) => {
+                Err(InstantiatePackageError::InvalidTrampolineSynchronicity)
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+struct AsyncInstanceShadower;
+
+impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
+    for AsyncInstanceShadower
+{
+    fn shadow_func(
+        &self,
+        instance: &mut LinkerInstance<D>,
+        export_name: &str,
+        shadow_func: component::Func,
+        interface_path: ForeignInterfacePath,
+        func_ty: wac_types::FuncType,
+        trampoline: &DynInterfaceTrampoline<D, C>,
+    ) -> Result<(), InstantiatePackageError> {
+        let fn_export_name = Arc::new(export_name.to_string());
+        let fn_interface_path = Arc::new(interface_path);
+        let fn_ty = Arc::new(func_ty);
+
+        match &trampoline {
+            DynInterfaceTrampoline::Sync(trampoline) => {
+                let fn_trampoline = trampoline.clone();
+
+                instance
+                    .func_new(export_name, move |store, arguments, result| {
+                        let mut result = fn_trampoline.bounce(
+                            &shadow_func,
+                            store,
+                            fn_interface_path.as_ref(),
+                            fn_export_name.as_str(),
+                            fn_ty.as_ref(),
+                            arguments,
+                            result,
+                        )?;
+
+                        result.post_return()?;
+
+                        Ok(())
+                    })
+                    .context(instantiate_package_error::LinkFuncInstantiationSnafu)
+            }
+
+            DynInterfaceTrampoline::Async(trampoline) => {
+                let fn_trampoline = trampoline.clone();
+
+                instance
                     .func_new_async(export_name, move |store, arguments, result| {
                         let export_name = fn_export_name.clone();
                         let trampoline = fn_trampoline.clone();
@@ -381,11 +600,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                             Ok(())
                         })
                     })
-                    .context(instantiate_package_error::LinkFuncInstantiationSnafu)?;
+                    .context(instantiate_package_error::LinkFuncInstantiationSnafu)
             }
         }
-
-        Ok(())
     }
 }
 

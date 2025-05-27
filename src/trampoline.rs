@@ -18,6 +18,15 @@ pub trait Trampoline<D, C = ()>: Send + Sync + 'static {
     }
 }
 
+impl<D: 'static, C: 'static> Trampoline<D, C> for Arc<dyn Trampoline<D, C>> {
+    fn bounce<'c>(
+        &self,
+        call: GuestCall<'c, D, C>,
+    ) -> Result<GuestResult<'c, D, C>, anyhow::Error> {
+        self.deref().bounce(call)
+    }
+}
+
 fn _assert_trampoline_object_safe(_object: &dyn Trampoline<()>) {
     unreachable!("only used for compile time assertion");
 }
@@ -26,7 +35,7 @@ pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     fn bounce_async<'c>(
         &'c self,
         call: AsyncGuestCall<'c, D, C>,
-    ) -> Pin<Box<dyn Future<Output = Result<GuestResultAsync<'c, D, C>, anyhow::Error>> + Send + 'c>>
+    ) -> Pin<Box<dyn Future<Output = Result<AsyncGuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
     {
         Box::pin(async move { call.call_async().await })
     }
@@ -38,7 +47,7 @@ impl<D: Send + 'static, C: Send + Sync + 'static> AsyncTrampoline<D, C>
     fn bounce_async<'c>(
         &'c self,
         call: AsyncGuestCall<'c, D, C>,
-    ) -> Pin<Box<dyn Future<Output = Result<GuestResultAsync<'c, D, C>, anyhow::Error>> + Send + 'c>>
+    ) -> Pin<Box<dyn Future<Output = Result<AsyncGuestResult<'c, D, C>, anyhow::Error>> + Send + 'c>>
     {
         Box::pin(async move { self.deref().bounce_async(call).await })
     }
@@ -113,12 +122,12 @@ pub struct AsyncGuestCall<'c, D: Send, C> {
 }
 
 impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
-    pub async fn call_async(mut self) -> Result<GuestResultAsync<'c, D, C>, anyhow::Error> {
+    pub async fn call_async(mut self) -> Result<AsyncGuestResult<'c, D, C>, anyhow::Error> {
         self.function
             .call_async(&mut self.data.store, self.data.arguments, self.data.results)
             .await?;
 
-        Ok(GuestResultAsync { context: self.data })
+        Ok(AsyncGuestResult { context: self.data })
     }
 }
 
@@ -149,7 +158,7 @@ impl<'c, D, C> GuestResult<'c, D, C> {
         self.context.results
     }
 
-    pub(crate) async fn post_return(&mut self) -> Result<(), anyhow::Error> {
+    pub(crate) fn post_return(&mut self) -> Result<(), anyhow::Error> {
         self.context.function.post_return(&mut self.context.store)
     }
 }
@@ -168,11 +177,11 @@ impl<'c, D, C> DerefMut for GuestResult<'c, D, C> {
     }
 }
 
-pub struct GuestResultAsync<'c, D: Send, C> {
+pub struct AsyncGuestResult<'c, D: Send, C> {
     context: GuestCallData<'c, D, C>,
 }
 
-impl<'c, D: Send, C> GuestResultAsync<'c, D, C> {
+impl<'c, D: Send, C> AsyncGuestResult<'c, D, C> {
     pub fn results(&self) -> &[Val] {
         self.context.results
     }
@@ -189,7 +198,7 @@ impl<'c, D: Send, C> GuestResultAsync<'c, D, C> {
     }
 }
 
-impl<'c, D: Send, C> Deref for GuestResultAsync<'c, D, C> {
+impl<'c, D: Send, C> Deref for AsyncGuestResult<'c, D, C> {
     type Target = GuestCallData<'c, D, C>;
 
     fn deref(&self) -> &Self::Target {
@@ -197,7 +206,7 @@ impl<'c, D: Send, C> Deref for GuestResultAsync<'c, D, C> {
     }
 }
 
-impl<'c, D: Send, C> DerefMut for GuestResultAsync<'c, D, C> {
+impl<'c, D: Send, C> DerefMut for AsyncGuestResult<'c, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.context
     }
@@ -274,6 +283,33 @@ pub struct InterfaceTrampoline<T, C> {
 }
 
 impl<T, C> InterfaceTrampoline<T, C> {
+    pub fn bounce<'c, D>(
+        &'c self,
+        function: &'c Func,
+        store: StoreContextMut<'c, D>,
+        path: &'c ForeignInterfacePath,
+        method: &'c str,
+        ty: &'c FuncType,
+        arguments: &'c [Val],
+        results: &'c mut [Val],
+    ) -> Result<GuestResult<'c, D, C>, anyhow::Error>
+    where
+        T: Trampoline<D, C>,
+    {
+        self.trampoline.bounce(GuestCall {
+            data: GuestCallData {
+                store,
+                function,
+                context: &self.context,
+                path,
+                method,
+                ty,
+                arguments,
+                results,
+            },
+        })
+    }
+
     pub async fn bounce_async<'c, D>(
         &'c self,
         function: &'c Func,
@@ -283,7 +319,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
         ty: &'c FuncType,
         arguments: &'c [Val],
         results: &'c mut [Val],
-    ) -> Result<GuestResultAsync<'c, D, C>, anyhow::Error>
+    ) -> Result<AsyncGuestResult<'c, D, C>, anyhow::Error>
     where
         D: Send,
         C: Send + Sync,
@@ -310,7 +346,7 @@ pub trait DynPackageTrampoline<D, C: Clone> {
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C>;
 }
 
-impl<D, C: Clone> DynPackageTrampoline<D, C> for PackageTrampoline<Rc<dyn Trampoline<D, C>>, C> {
+impl<D, C: Clone> DynPackageTrampoline<D, C> for PackageTrampoline<Arc<dyn Trampoline<D, C>>, C> {
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C> {
         DynInterfaceTrampoline::Sync(self.interface_trampoline(interface_name))
     }
@@ -327,6 +363,6 @@ impl<D, C: Clone> DynPackageTrampoline<D, C>
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
 pub enum DynInterfaceTrampoline<D, C: Clone> {
-    Sync(InterfaceTrampoline<Rc<dyn Trampoline<D, C>>, C>),
+    Sync(InterfaceTrampoline<Arc<dyn Trampoline<D, C>>, C>),
     Async(InterfaceTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>),
 }
