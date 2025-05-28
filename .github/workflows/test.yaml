@@ -9,7 +9,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest-16 ]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -18,6 +18,9 @@ jobs:
       - uses: cachix/cachix-action@v14
         with:
           name: devenv
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
