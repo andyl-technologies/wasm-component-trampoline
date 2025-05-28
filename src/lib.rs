@@ -1,6 +1,6 @@
 mod graph;
 mod path;
-mod semver;
+pub mod semver;
 mod trampoline;
 
 pub use graph::*;

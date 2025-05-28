@@ -1,15 +1,52 @@
+//! A specialized map for semantic versions with alternate version lookup support.
+//!
+//! This module provides `VersionMap<T>`, which stores values indexed by semantic versions
+//! and supports fallback lookups through version alternates (e.g., 1.2.3 can be found
+//! via 1.0.0 if it's the latest patch for major version 1).
+
 use derivative::Derivative;
 use semver::Version;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+/// A map that stores values indexed by semantic versions with support for alternate lookups.
+///
+/// The `VersionMap` maintains a primary mapping from versions to values, and a secondary
+/// mapping that groups versions by their "alternate" keys for fallback lookups.
+///
+/// # Alternate Lookup Logic
+///
+/// - For major versions > 0: alternate is `major.0.0`
+/// - For minor versions > 0 (when major is 0): alternate is `0.minor.0`
+/// - Otherwise: alternate is `0.0.patch`
+/// - Pre-release versions have no alternates
+///
+/// # Example
+///
+/// ```rust
+/// use semver::Version;
+/// # use wasm_trampoline::semver::VersionMap;
+///
+/// let mut map = VersionMap::new();
+/// map.insert(Version::new(1, 0, 1), "v1.0.1");
+/// map.insert(Version::new(1, 2, 0), "v1.2.0");
+///
+/// // Exact lookups
+/// assert_eq!(map.get_exact(&Version::new(1, 0, 1)), Some(&"v1.0.1"));
+///
+/// // Alternate lookups (finds latest patch for major version 1)
+/// assert_eq!(map.get(&Version::new(1, 0, 0)), Some(&"v1.2.0"));
+/// ```
 #[derive(Clone, Derivative, Debug)]
 #[derivative(Default(bound = ""))]
 pub struct VersionMap<T> {
+    /// Primary storage mapping versions to values
     versions: BTreeMap<Version, T>,
+    /// Secondary mapping for alternate version lookups
     alternates: HashMap<Version, BTreeSet<Version>>,
 }
 
 impl<T> VersionMap<T> {
+    /// Creates a new empty `VersionMap`.
     pub fn new() -> Self {
         Self {
             versions: BTreeMap::new(),
@@ -17,6 +54,7 @@ impl<T> VersionMap<T> {
         }
     }
 
+    /// Attempts to insert a version-value pair, returning an error if the version already exists.
     pub fn try_insert(&mut self, version: Version, value: T) -> Result<(), (Version, T)> {
         if self.versions.contains_key(&version) {
             return Err((version, value));
@@ -34,6 +72,9 @@ impl<T> VersionMap<T> {
         Ok(())
     }
 
+    /// Inserts a version-value pair, returning the previous value if the version existed.
+    ///
+    /// Updates the alternates mapping appropriately.
     pub fn insert(&mut self, version: Version, value: T) -> Option<T> {
         if let Some(alternate) = version_alternate(&version) {
             self.alternates
@@ -45,6 +86,26 @@ impl<T> VersionMap<T> {
         self.versions.insert(version, value)
     }
 
+    /// Gets a value by version, using alternate lookup if exact match is not found.
+    /// # Examples
+    ///
+    /// ```rust
+    /// use semver::Version;
+    /// # use wasm_trampoline::semver::VersionMap;
+    ///
+    /// let mut map = VersionMap::new();
+    /// map.insert(Version::new(0, 0, 1), "v0.0.9");
+    /// map.insert(Version::new(0, 1, 1), "v0.1.1");
+    /// map.insert(Version::new(1, 2, 0), "v1.2.1");
+    ///
+    /// // Get latest patch
+    /// assert_eq!(map.get(&Version::new(0, 0, 1)), Some(&"v0.0.9"));
+    ///
+    /// // Get latest minor
+    /// assert_eq!(map.get(&Version::new(0, 1, 0)), Some(&"v0.1.1"));
+    ///
+    /// // Get latest major
+    /// assert_eq!(map.get(&Version::new(1, 0, 0)), Some(&"v1.2.1"));
     pub fn get(&self, version: &Version) -> Option<&T> {
         if version.build.is_empty() {
             let maybe_value = version_alternate(version)
@@ -61,18 +122,47 @@ impl<T> VersionMap<T> {
         self.get_exact(version)
     }
 
+    /// Gets a value by version or returns the latest version if no specific version is provided.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use semver::Version;
+    /// # use wasm_trampoline::semver::VersionMap;
+    ///
+    /// let mut map = VersionMap::new();
+    /// map.insert(Version::new(0, 0, 1), "v0.0.9");
+    /// map.insert(Version::new(0, 1, 0), "v0.1.0");
+    /// map.insert(Version::new(0, 1, 1), "v0.1.1");
+    /// map.insert(Version::new(0, 5, 1), "v0.5.1");
+    /// map.insert(Version::new(1, 0, 0), "v1.0.0");
+    /// map.insert(Version::new(1, 2, 0), "v1.2.0");
+    ///
+    /// // Get latest patch
+    /// assert_eq!(map.get_or_latest(Some(&Version::new(0, 0, 1))), Some(&"v0.0.9"));
+    ///
+    /// // Get latest minor
+    /// assert_eq!(map.get_or_latest(Some(&Version::new(0, 1, 0))), Some(&"v0.1.1"));
+    ///
+    /// // Get latest major
+    /// assert_eq!(map.get_or_latest(Some(&Version::new(1, 0, 0))), Some(&"v1.2.0"));
+    ///
+    /// // Get the latest version
+    /// assert_eq!(map.get_or_latest(None), Some(&"v1.2.0"));
+    /// ```
     pub fn get_or_latest(&self, version: Option<&Version>) -> Option<&T> {
-        if let Some(version) = version {
-            self.get(version)
-        } else {
-            self.get_latest().map(|(_, value)| value)
+        match version {
+            Some(v) => self.get(v),
+            None => self.get_latest().map(|(_, value)| value),
         }
     }
 
+    /// Returns the latest version and its associated value.
     pub fn get_latest(&self) -> Option<(&Version, &T)> {
         self.versions.last_key_value()
     }
 
+    /// Gets a value by exact version match only, without alternate lookup.
     pub fn get_exact(&self, version: &Version) -> Option<&T> {
         self.versions.get(version)
     }
@@ -91,7 +181,15 @@ impl<T> VersionMap<T> {
     }
 }
 
+/// Computes the alternate version key for fallback lookups.
+///
+/// This function implements the alternate lookup logic:
+/// - Pre-release versions return `None` (no alternates)
+/// - Major versions > 0: return `major.0.0`
+/// - Minor versions > 0 (when major is 0): return `0.minor.0`
+/// - Otherwise: return `0.0.patch`
 fn version_alternate(version: &Version) -> Option<Version> {
+    // Pre-release versions don't have alternates
     if !version.pre.is_empty() {
         None
     } else if version.major > 0 {
