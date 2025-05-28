@@ -6,9 +6,11 @@
 }:
 
 {
-  packages = [
-    pkgs.cargo-watch
-    pkgs.git
+  packages = with pkgs; [
+    cargo-watch
+    git
+    lld
+    wasm-tools
   ];
 
   languages.rust.enable = true;
