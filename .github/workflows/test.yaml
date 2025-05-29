@@ -3,7 +3,7 @@ name: "Run Tests"
 on:
   pull_request:
   push:
-    branches: [ $default_branch ]
+    branches: [ master ]
 
 jobs:
   tests:
