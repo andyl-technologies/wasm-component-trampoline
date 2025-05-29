@@ -6,4 +6,6 @@ interface logger {
 
 world logging {
     export logger;
+
+    import println: func(msg: string);
 }

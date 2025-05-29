@@ -14,11 +14,17 @@ pub struct Store;
 
 impl exports::test::kvstore::store::Guest for Store {
     fn set(key: String, value: String) {
+        test::logging::logger::log(format!("setting key '{key}' to value {value:?}").as_str());
+
         GLOBAL_MAP.lock().unwrap().insert(key, value);
     }
 
     fn get(key: String) -> Option<String> {
-        GLOBAL_MAP.lock().unwrap().get(&key).cloned()
+        let value = GLOBAL_MAP.lock().unwrap().get(&key).cloned();
+
+        test::logging::logger::log(format!("getting key '{key}' as value {value:?}").as_str());
+
+        value
     }
 }
 

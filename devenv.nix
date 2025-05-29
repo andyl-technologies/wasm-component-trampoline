@@ -22,6 +22,7 @@
   enterTest = ''
     cargo test --workspace
     cargo fmt --check --all
+    tests/runner/build.sh
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
