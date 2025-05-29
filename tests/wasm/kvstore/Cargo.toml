@@ -1,10 +1,10 @@
 [package]
 name = "kvstore"
 version = "2.1.6"
-edition = "2024"
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "0.42"
+wit-bindgen.workspace = true

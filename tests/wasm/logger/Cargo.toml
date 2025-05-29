@@ -1,10 +1,10 @@
 [package]
 name = "logger"
 version = "1.0.0"
-edition = "2024"
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "0.42"
+wit-bindgen.workspace = true

@@ -7,6 +7,11 @@ members = [
 
 [package]
 name = "wasm-trampoline"
+authors.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
 version = "0.1.0"
 edition = "2024"
@@ -20,17 +25,19 @@ async = [
     "wasmtime/component-model-async",
 ]
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1"
 derivative = "2"
 semver = "1"
+wasmtime = { version = "33", features = ["component-model"] }
+wit-bindgen = "0.42"
 
 [target.'cfg(unix)'.dependencies]
-anyhow = "1"
-derivative = "2"
-semver = "1"
+anyhow.workspace = true
+derivative.workspace = true
+semver.workspace = true
 indexmap = "2"
 slab = "0.4"
 snafu = "0.8"
 wac-types = "0.6"
-wasmtime = { version = "33", features = ["component-model"] }
+wasmtime.workspace = true
