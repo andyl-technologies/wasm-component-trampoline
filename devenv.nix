@@ -34,6 +34,7 @@
     cargo build --workspace --target wasm32-unknown-unknown
     cargo build --workspace --target wasm32-wasip2
     cargo fmt --check --all
+    tests/runner/build.sh
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
