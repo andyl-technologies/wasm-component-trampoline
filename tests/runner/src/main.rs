@@ -13,7 +13,7 @@ mod runner {
     use std::path::Path;
     use std::sync::Arc;
     use tokio::fs;
-    use wac_trampoline::{AsyncTrampoline, CompositionGraph};
+    use wasm_trampoline::{AsyncTrampoline, CompositionGraph};
     use wasmtime::{Config, Engine, Store, component::Linker};
 
     // Define our store data type
@@ -36,7 +36,7 @@ mod runner {
         path: &str,
         name: &str,
         version: Version,
-    ) -> Result<wac_trampoline::PackageId, wac_trampoline::AddPackageError> {
+    ) -> Result<wasm_trampoline::PackageId, wasm_trampoline::AddPackageError> {
         eprintln!("Loading {path} component...");
         let wasm_dir = Path::new(WASM_DIR);
         let wasm_file = format!("{path}.component.wasm").to_string();
@@ -50,7 +50,7 @@ mod runner {
             });
 
         let trampoline: Arc<dyn AsyncTrampoline<AppData, ()>> = Arc::new(PassthroughTrampoline {});
-        let pkg = wac_trampoline::PackageTrampoline::with_default_context(trampoline, ());
+        let pkg = wasm_trampoline::PackageTrampoline::with_default_context(trampoline, ());
 
         let ret = graph.add_package(name.to_string(), version, pkg_bytes, pkg);
         eprintln!("{name} component loaded successfully.");
