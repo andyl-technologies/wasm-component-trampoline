@@ -6,5 +6,13 @@ edition.workspace = true
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = [
+    "async"
+]
+async = [
+    "wit-bindgen/async",
+]
+
 [dependencies]
 wit-bindgen.workspace = true

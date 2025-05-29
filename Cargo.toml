@@ -30,7 +30,9 @@ anyhow = "1"
 derivative = "2"
 semver = "1"
 wasmtime = { version = "33", features = ["component-model"] }
-wit-bindgen = "0.42"
+wit-bindgen = { version = "0.42", default-features = false, features = [
+  "macros",
+]}
 
 [target.'cfg(unix)'.dependencies]
 anyhow.workspace = true
