@@ -23,6 +23,15 @@
       "wasm32-wasip2"
       "wasm32v1-none"
     ];
+    components = [
+      "cargo"
+      "clippy"
+      "clippy-preview"
+      "rust-analyzer"
+      "rustc"
+      "rustfmt"
+      "llvm-tools-preview"
+    ];
   };
 
   processes = lib.optionalAttrs (!config.devenv.isTesting) {
@@ -35,6 +44,7 @@
     cargo build --workspace --target wasm32-wasip2
     cargo fmt --check --all
     tests/runner/build.sh
+    cargo llvm-cov  run --bin runner -p runner --release
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;

@@ -27,6 +27,7 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/master' }}
           cache-all-crates: true
+      - uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
