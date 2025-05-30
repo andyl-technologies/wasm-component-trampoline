@@ -1,8 +1,13 @@
 [workspace]
 resolver = "3"
 members = [
+  ".",
   "tests/runner",
   "tests/wasm/[a-z]*",
+]
+default-members = [
+  ".",
+  "tests/runner",
 ]
 
 [package]
