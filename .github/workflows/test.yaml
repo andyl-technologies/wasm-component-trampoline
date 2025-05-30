@@ -27,10 +27,34 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/master' }}
           cache-all-crates: true
-      - uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
 
       - name: Run tests
         run: devenv test
+
+  coverage:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest-16 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v26
+      - uses: cachix/cachix-action@v14
+        with:
+          name: devenv
+      - name: Install devenv.sh
+        run: nix profile install nixpkgs#devenv
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+          cache-all-crates: true
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Run coverage
+        run: devenv shell wasm-trampoline-coverage
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.cobertura.xml
