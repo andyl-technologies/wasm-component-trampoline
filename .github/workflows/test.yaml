@@ -26,6 +26,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/master' }}
+          cache-all-crates: true
 
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
