@@ -54,10 +54,10 @@
     exec = ''
       tests/runner/build.sh
       cargo llvm-cov clean --workspace
-      cargo llvm-cov test --workspace --no-report
+      cargo llvm-cov test --workspace --no-report --release
       cargo llvm-cov run --bin runner -p runner --release --no-report
-      cargo llvm-cov report --lcov --output-path coverage.lcov
-      cargo llvm-cov report --cobertura --output-path coverage.cobertura.xml
+      cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
+      cargo llvm-cov report --release --lcov --output-path coverage.lcov
     '';
   };
 }

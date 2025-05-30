@@ -5,6 +5,11 @@ on:
   push:
     branches: [ master ]
 
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
 jobs:
   tests:
     env:
@@ -25,8 +30,8 @@ jobs:
         uses: Mozilla-Actions/sccache-action@main
       - uses: Swatinem/rust-cache@v2
         with:
-          save-if: ${{ github.ref == 'refs/heads/master' }}
           cache-all-crates: true
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
@@ -48,13 +53,19 @@ jobs:
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
       - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-          cache-all-crates: true
       - uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run coverage
         run: devenv shell wasm-trampoline-coverage
-      - name: Code Coverage Summary Report
-        uses: irongut/CodeCoverageSummary@v1.3.0
+      - name: Generate Coverage Report
+        uses: clearlyip/code-coverage-report-action@v5
+        id: code_coverage_report_action
+        if: ${{ github.actor != 'dependabot[bot]'}}
         with:
-          filename: coverage.cobertura.xml
+          filename: 'coverage.cobertura.xml'
+          artifact_download_workflow_names: 'ci,"Run Tests"'
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: steps.code_coverage_report_action.outputs.file != '' && github.event_name == 'pull_request' && (success() || failure())
+        with:
+          recreate: true
+          path: code-coverage-results.md
