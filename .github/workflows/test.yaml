@@ -10,6 +10,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      CARGO_INCREMENTAL: "0"
     strategy:
       matrix:
         os: [ ubuntu-latest-16 ]
