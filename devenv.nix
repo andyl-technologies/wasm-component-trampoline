@@ -44,9 +44,20 @@
     cargo build --workspace --target wasm32-wasip2
     cargo fmt --check --all
     tests/runner/build.sh
-    cargo llvm-cov  run --bin runner -p runner --release
   '';
 
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
   git-hooks.hooks.actionlint.enable = true;
+
+  scripts."wasm-trampoline-coverage" = {
+    description = "Run wasm-trampoline-coverage";
+    exec = ''
+      tests/runner/build.sh
+      cargo llvm-cov clean --workspace
+      cargo llvm-cov test --workspace --no-report --release
+      cargo llvm-cov run --bin runner -p runner --release --no-report
+      cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
+      cargo llvm-cov report --release --lcov --output-path coverage.lcov
+    '';
+  };
 }
