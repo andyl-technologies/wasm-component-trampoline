@@ -63,7 +63,7 @@ jobs:
         if: ${{ github.actor != 'dependabot[bot]'}}
         with:
           filename: 'coverage.cobertura.xml'
-          artifact_download_workflow_names: 'ci,"Run Tests"'
+          artifact_download_workflow_names: '"Run Tests",cron'
       - name: Add Coverage PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         if: steps.code_coverage_report_action.outputs.file != '' && github.event_name == 'pull_request' && (success() || failure())
