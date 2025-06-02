@@ -11,29 +11,61 @@ permissions:
   pull-requests: write
 
 jobs:
-  tests:
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
-      CARGO_INCREMENTAL: "0"
+  build-nix-cache:
     strategy:
       matrix:
         os: [ ubuntu-latest-16 ]
     runs-on: ${{ matrix.os }}
-
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            /nix/store/*.drv
-          key: ${{ runner.os }}-nix-${{ hashFiles('**/devenv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-nix-
       - uses: cachix/install-nix-action@v26
+      - name: Restore nix cache
+        id: restore-nix
+        uses: nix-community/cache-nix-action/restore@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/devenv.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
       - uses: cachix/cachix-action@v14
         with:
           name: devenv
+      - name: Install devenv.sh
+        if: steps.restore-nix.outputs.hit == 'false'
+        run: nix profile install nixpkgs#devenv
+      - name: Save
+        if: steps.restore-nix.outputs.hit == 'false'
+        uses: nix-community/cache-nix-action/save@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/devenv.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          # purge: true
+          # purge-primary-key: never
+
+
+  tests:
+    needs: build-nix-cache
+    strategy:
+      matrix:
+        os: [ ubuntu-latest-16 ]
+    runs-on: ${{ matrix.os }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      CARGO_INCREMENTAL: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v26
+      - name: Restore Nix store
+        uses: nix-community/cache-nix-action/restore@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/devenv.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - uses: cachix/cachix-action@v14
+        with:
+          name: devenv
+      - name: Install devenv.sh
+        run: nix profile install nixpkgs#devenv
+
       - name: sccache
         uses: Mozilla-Actions/sccache-action@main
       - uses: Swatinem/rust-cache@v2
@@ -41,13 +73,12 @@ jobs:
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
 
       - name: Run tests
         run: devenv test
 
   coverage:
+    needs: build-nix-cache
     strategy:
       matrix:
         os: [ ubuntu-latest-16 ]
@@ -55,11 +86,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v26
+      - name: Restore Nix store
+        uses: nix-community/cache-nix-action/restore@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/devenv.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+
       - uses: cachix/cachix-action@v14
         with:
           name: devenv
       - name: Install devenv.sh
         run: nix profile install nixpkgs#devenv
+
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run coverage
