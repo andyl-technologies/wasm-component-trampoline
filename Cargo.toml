@@ -34,7 +34,7 @@ async = [
 anyhow = "1"
 derivative = "2"
 semver = "1"
-wasmtime = { version = "33", features = ["component-model"] }
+wasmtime = { version = "33", default-features = false }
 wit-bindgen = { version = "0.42", default-features = false, features = [
   "macros",
 ]}
@@ -47,4 +47,9 @@ indexmap = "2"
 slab = "0.4"
 snafu = "0.8"
 wac-types = "0.6"
-wasmtime.workspace = true
+wasmtime = { workspace = true, features = [
+  "addr2line",
+  "component-model",
+  "cranelift",
+  "wat",
+]}
