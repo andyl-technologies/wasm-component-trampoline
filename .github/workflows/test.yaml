@@ -1,41 +1,38 @@
-name: "Run Tests"
+name: 'Run Tests'
 
 on:
   pull_request:
   push:
-    branches: [ master ]
+    branches: [master]
 
 permissions:
-  actions: write
+  actions: read
   contents: write
   pull-requests: write
 
 jobs:
   tests:
     env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
-      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: 'true'
+      RUSTC_WRAPPER: 'sccache'
+      CARGO_INCREMENTAL: '0'
     strategy:
       matrix:
-        os: [ ubuntu-latest-16 ]
+        os: [ubuntu-latest-16]
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v26
-      - uses: cachix/cachix-action@v14
-        with:
-          name: devenv
-      - name: sccache
-        uses: Mozilla-Actions/sccache-action@main
-      - uses: Swatinem/rust-cache@v2
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup devenv
+        uses: andyl-technologies/andyl-github-action/setup-devenv@master
+
+      - name: Setup Rust cache
+        uses: andyl-technologies/andyl-github-action/rust-cache@master
         with:
           cache-all-crates: true
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
+          use-ccache: true
 
       - name: Run tests
         run: devenv test
@@ -43,30 +40,34 @@ jobs:
   coverage:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v26
-      - uses: cachix/cachix-action@v14
-        with:
-          name: devenv
-      - name: Install devenv.sh
-        run: nix profile install nixpkgs#devenv
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Run coverage
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup devenv
+        uses: andyl-technologies/andyl-github-action/setup-devenv@master
+
+      - name: Setup Rust cache
+        uses: andyl-technologies/andyl-github-action/rust-cache@master
+
+      - name: Run coverage tests
         run: devenv shell wasm-trampoline-coverage
-      - name: Generate Coverage Report
+
+      - name: Generate coverage report
         uses: clearlyip/code-coverage-report-action@v5
         id: code_coverage_report_action
         if: ${{ github.actor != 'dependabot[bot]'}}
         with:
           filename: 'coverage.cobertura.xml'
           artifact_download_workflow_names: '"Run Tests",cron'
-      - name: Add Coverage PR Comment
+
+      - name: Add coverage PR comment
         uses: marocchino/sticky-pull-request-comment@v2
-        if: steps.code_coverage_report_action.outputs.file != '' && github.event_name == 'pull_request' && (success() || failure())
+        if:
+          steps.code_coverage_report_action.outputs.file != '' &&
+          github.event_name == 'pull_request' && (success() || failure())
         with:
           recreate: true
           path: code-coverage-results.md
