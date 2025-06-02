@@ -43,7 +43,7 @@ jobs:
   coverage:
     strategy:
       matrix:
-        os: [ ubuntu-latest-16 ]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
