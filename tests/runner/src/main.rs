@@ -42,7 +42,7 @@ mod runner {
                 eprintln!(
                     "[{}] Bounced call '{}#{}'",
                     call.store().data().stack_depth,
-                    call.interface().to_string(),
+                    call.interface(),
                     call.method(),
                 );
 
@@ -55,7 +55,7 @@ mod runner {
                 eprintln!(
                     "[{}] Bounced return '{}#{}'",
                     result.store().data().stack_depth,
-                    result.interface().to_string(),
+                    result.interface(),
                     result.method(),
                 );
 
@@ -120,6 +120,9 @@ mod runner {
 
         // Load the logger component
         add_package(&mut graph, "logger", "test:logging", Version::new(1, 1, 1)).await?;
+        add_package(&mut graph, "logger", "test:logging", Version::new(1, 1, 1))
+            .await
+            .expect_err("Duplicate logger component should not be allowed");
 
         // Load the KV store component
         let _kvstore_id =
