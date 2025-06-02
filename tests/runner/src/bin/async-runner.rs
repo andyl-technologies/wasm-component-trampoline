@@ -68,7 +68,7 @@ mod runner {
     }
 
     // TODO(bill): directory from command line
-    const WASM_DIR: &str = "target/wasm32-unknown-unknown/release/";
+    const WASM_DIR: &str = "wasm32-unknown-unknown/release/";
 
     // TODO(bill): packages from command line
     async fn add_package(
@@ -78,7 +78,10 @@ mod runner {
         version: Version,
     ) -> Result<wasm_trampoline::PackageId, wasm_trampoline::AddPackageError> {
         eprintln!("Loading {path} component...");
-        let wasm_dir = Path::new(WASM_DIR);
+        let wasm_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("target")
+            .join(WASM_DIR);
         let wasm_file = format!("{path}.component.wasm").to_string();
         let pkg_bytes = fs::read(wasm_dir.join(&wasm_file))
             .await

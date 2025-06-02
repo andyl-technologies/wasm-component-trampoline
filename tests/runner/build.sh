@@ -8,4 +8,5 @@ for x in kvstore logger application; do
     target/wasm32-unknown-unknown/release/$x.wasm > target/wasm32-unknown-unknown/release/$x.component.wasm
 done
 
-cargo run -p runner --release
+cargo run -p runner --bin runner --release
+cargo run -p runner --bin async-runner --release
