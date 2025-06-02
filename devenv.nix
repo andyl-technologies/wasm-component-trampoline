@@ -52,10 +52,11 @@
   scripts."wasm-trampoline-coverage" = {
     description = "Run wasm-trampoline-coverage";
     exec = ''
-      tests/runner/build.sh
+      tests/runner/build.sh >/dev/null
       cargo llvm-cov clean --workspace
       cargo llvm-cov test --workspace --no-report --release
       cargo llvm-cov run --bin runner -p runner --release --no-report
+      cargo llvm-cov run --bin async-runner -p runner --release --no-report
       cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
       cargo llvm-cov report --release --lcov --output-path coverage.lcov
     '';
