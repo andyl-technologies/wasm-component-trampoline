@@ -48,15 +48,15 @@ impl From<ForeignInterfacePath> for InterfacePath {
 
 impl Display for ForeignInterfacePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref version) = self.version {
-            write!(
-                f,
-                "{}/{}@{}",
-                self.package_name, self.interface_name, version
-            )
-        } else {
-            write!(f, "{}/{}", self.package_name, self.interface_name)
-        }
+        write!(
+            f,
+            "{}/{}{}",
+            self.package_name,
+            self.interface_name,
+            self.version
+                .as_ref()
+                .map_or_else(|| "".to_string(), |v| format!("@{v}"))
+        )
     }
 }
 
@@ -152,22 +152,15 @@ impl FromStr for InterfacePath {
 
 impl Display for InterfacePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref version) = self.version {
-            write!(
-                f,
-                "{}/{}@{}",
-                self.package_name.as_ref().unwrap_or(&"".to_string()),
-                self.interface_name,
-                version
-            )
-        } else {
-            write!(
-                f,
-                "{}/{}",
-                self.package_name.as_ref().unwrap_or(&"".to_string()),
-                self.interface_name
-            )
-        }
+        write!(
+            f,
+            "{}/{}{}",
+            self.package_name.as_ref().unwrap_or(&"".to_string()),
+            self.interface_name,
+            self.version
+                .as_ref()
+                .map_or_else(|| "".to_string(), |v| format!("@{v}")),
+        )
     }
 }
 
@@ -184,10 +177,39 @@ pub enum InterfacePathParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const PACKAGE: &str = "package_name/interface_name@1.0.0";
+
+    #[test]
+    fn test_path_display() {
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
+        assert_eq!(PACKAGE, format!("{path}"));
+
+        let foreign_path = path.clone().into_foreign().unwrap();
+        assert_eq!(PACKAGE, format!("{foreign_path}"));
+
+        assert_eq!(format!("{path}"), format!("{foreign_path}"));
+    }
+
+    #[test]
+    fn test_interface_path_roundtrip() {
+        // Convert to ForeignInterfacePath and back
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
+        assert_eq!(path, path.clone().into_foreign().unwrap().into());
+
+        // Parse the string representation back into InterfacePath
+        assert_eq!(
+            path,
+            InterfacePath::new(
+                path.package_name().map(String::from),
+                path.interface_name().to_string(),
+                path.version().cloned(),
+            )
+        );
+    }
 
     #[test]
     fn test_interface_path_parsing() {
-        let path = InterfacePath::from_str("package_name/interface_name@1.0.0").unwrap();
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
         assert_eq!(path.package_name(), Some("package_name"));
         assert_eq!(path.interface_name(), "interface_name");
         assert_eq!(path.version(), Some(&Version::parse("1.0.0").unwrap()));
