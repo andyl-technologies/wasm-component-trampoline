@@ -40,6 +40,7 @@ derivative = "2"
 semver = "1"
 wasm-component-semver = "1"
 wasmtime = { version = "34", default-features = false }
+wat = { version = "1.233.0", default-features = false }
 wit-bindgen = { version = "0.43", default-features = false, features = [
   "macros",
 ]}

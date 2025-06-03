@@ -125,6 +125,16 @@ mod runner {
         // Create our composition graph
         let mut graph = CompositionGraph::<AppData>::new();
 
+        // Fail to load the logger component with the wrong version
+        add_package(
+            &mut graph,
+            "logger",
+            "test:logging",
+            Version::new(100, 0, 0),
+        )
+        .await
+        .expect_err("logger component with wrong version should not be allowed");
+
         // Load the logger component
         add_package(
             &mut graph,
@@ -134,6 +144,7 @@ mod runner {
             Version::new(1, 1, 1),
         )
         .await?;
+        // Attempt to load the logger component again, which should fail
         add_package(
             &mut graph,
             &args.wasm_dir,
@@ -182,6 +193,7 @@ mod runner {
             .test_application_greeter()
             .call_set_name(&mut store, "Dave")
             .await?;
+        //
 
         let hello = application
             .test_application_greeter()

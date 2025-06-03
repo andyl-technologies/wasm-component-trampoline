@@ -8,11 +8,15 @@ publish = []
 anyhow.workspace = true
 semver.workspace = true
 tokio = { version = "1.0", features = ["full"] }
-wasmtime = { workspace = true, features = ["component-model", "async"] }
+wasmtime = { workspace = true, features = ["async", "component-model", "cranelift", "wat"] }
 wasm-component-trampoline = { path = "../.." }
+wat = {workspace = true, features = ["component-model"]}
 
 [[bin]]
 name = "async-runner"
+
+[[bin]]
+name = "fail-runner"
 
 [[bin]]
 name = "runner"
