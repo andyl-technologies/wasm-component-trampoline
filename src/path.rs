@@ -3,6 +3,7 @@ use snafu::{ResultExt, Snafu};
 use std::fmt::Display;
 use std::str::FromStr;
 
+/// A fully-qualified path to a WIT interface, with an optional version.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct ForeignInterfacePath {
     package_name: String,
@@ -11,6 +12,7 @@ pub struct ForeignInterfacePath {
 }
 
 impl ForeignInterfacePath {
+    /// Creates a new `ForeignInterfacePath` with the given package name, interface name, and optional version.
     #[must_use]
     pub fn new(package_name: String, interface_name: String, version: Option<Version>) -> Self {
         ForeignInterfacePath {
@@ -20,16 +22,19 @@ impl ForeignInterfacePath {
         }
     }
 
+    /// Returns the package name component of the interface path.
     #[must_use]
     pub fn package_name(&self) -> &str {
         self.package_name.as_ref()
     }
 
+    /// Returns the interface name component of the interface path.
     #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    /// Returns the version component of the interface path, if one is specified.
     #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
@@ -60,6 +65,8 @@ impl Display for ForeignInterfacePath {
     }
 }
 
+/// Represents a path to a WIT interface, which may be local (without a package name) or foreign
+/// (with a package name). The version is optional in both cases.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct InterfacePath {
     package_name: Option<String>,
@@ -81,21 +88,26 @@ impl InterfacePath {
         }
     }
 
+    /// Returns the package name component of the interface path, if one is specified.
     #[must_use]
     pub fn package_name(&self) -> Option<&str> {
         self.package_name.as_deref()
     }
 
+    /// Returns the interface name component of the interface path.
     #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    /// Returns the version component of the interface path, if one is specified.
     #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
     }
 
+    /// Converts this `InterfacePath` into a `ForeignInterfacePath`, if it has a package name,
+    /// otherwise returns `None`.
     #[must_use]
     pub fn into_foreign(self) -> Option<ForeignInterfacePath> {
         Some(ForeignInterfacePath {

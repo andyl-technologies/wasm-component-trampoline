@@ -8,6 +8,11 @@ use wac_types::FuncType;
 use wasmtime::component::{Func, Val};
 use wasmtime::{AsContext, AsContextMut, StoreContext, StoreContextMut};
 
+/// A trampoline is a mechanism to intercept WASM component function calls when switching
+/// component contexts.
+///
+/// It allows for custom logic to be securely executed before and after the actual function call
+/// on the host side.
 pub trait Trampoline<D, C = ()>: Send + Sync + 'static {
     fn bounce<'c>(
         &self,
@@ -30,6 +35,7 @@ fn _assert_trampoline_object_safe(_object: &dyn Trampoline<()>) {
     unreachable!("only used for compile time assertion");
 }
 
+/// Like `Trampoline`, but for asynchronous WASM function calls.
 pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     fn bounce_async<'c>(
         &'c self,
@@ -56,6 +62,7 @@ fn _assert_async_trampoline_object_safe(_object: &dyn AsyncTrampoline<()>) {
     unreachable!("only used for compile time assertion");
 }
 
+/// Data structure that holds the common context for a guest call to a WASM component function.
 pub struct GuestCallData<'c, D, C> {
     store: StoreContextMut<'c, D>,
     function: &'c Func,
@@ -68,44 +75,59 @@ pub struct GuestCallData<'c, D, C> {
 }
 
 impl<'c, D, C> GuestCallData<'c, D, C> {
+    /// Returns the WASM runtime store context.
     pub fn store(&self) -> StoreContext<'_, D> {
         self.store.as_context()
     }
 
+    /// Returns a mutable reference to the WASM runtime store context.
     pub fn store_mut(&mut self) -> StoreContextMut<'_, D> {
         self.store.as_context_mut()
     }
 
+    /// Returns the custom trampoline-specific context.
     pub fn context(&mut self) -> &C {
         self.context
     }
 
+    /// Returns the fully-qualified WIT foreign interface path of the function being called.
     #[must_use]
     pub fn interface(&self) -> &ForeignInterfacePath {
         self.path
     }
 
+    /// Returns the method name of the function being called.
     #[must_use]
     pub fn method(&self) -> &str {
         self.method
     }
 
+    /// Returns the type signature of the function being called.
     #[must_use]
     pub fn func_type(&self) -> &FuncType {
         self.ty
     }
 
+    /// Provides an immutable reference to the input arguments of the function call.
     #[must_use]
     pub fn arguments(&self) -> &[Val] {
         self.arguments
     }
 }
 
+/// A guest call to a WASM component function, which must be executed synchronously.
+///
+/// It's expected that the `call` method will be called to execute the function call in all cases,
+/// unless an error occurs during the setup of the call.
 pub struct GuestCall<'c, D, C> {
     data: GuestCallData<'c, D, C>,
 }
 
 impl<'c, D, C> GuestCall<'c, D, C> {
+    /// Calls the underlying WASM component function with the provided arguments and results.
+    ///
+    /// Returns an error if the function call fails, or a `GuestResult` containing the results of
+    /// the call.
     pub fn call(mut self) -> Result<GuestResult<'c, D, C>, anyhow::Error> {
         self.function
             .call(&mut self.data.store, self.data.arguments, self.data.results)?;
@@ -128,11 +150,19 @@ impl<D, C> DerefMut for GuestCall<'_, D, C> {
     }
 }
 
+/// A guest call to a WASM component function, which may be executed asynchronously.
+///
+/// It's expected that the `call_async` method will be called to execute the function call in all
+/// cases, unless an error occurs during the setup of the call.
 pub struct AsyncGuestCall<'c, D: Send, C> {
     data: GuestCallData<'c, D, C>,
 }
 
 impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
+    /// Calls the underlying WASM component function with the provided arguments and results.
+    ///
+    /// Returns an error if the function call fails, or an `AsyncGuestResult` containing the results
+    /// of the call.
     pub async fn call_async(mut self) -> Result<AsyncGuestResult<'c, D, C>, anyhow::Error> {
         self.function
             .call_async(&mut self.data.store, self.data.arguments, self.data.results)
@@ -156,17 +186,16 @@ impl<D: Send, C> DerefMut for AsyncGuestCall<'_, D, C> {
     }
 }
 
+/// A result of a guest call to a WASM component function, which contains the returned value(s) of
+/// the underlying WASM call.
 pub struct GuestResult<'c, D, C> {
     context: GuestCallData<'c, D, C>,
 }
 
 impl<D, C> GuestResult<'_, D, C> {
+    /// Returns an immutable reference to the results of the WASM function call.
     #[must_use]
     pub fn results(&self) -> &[Val] {
-        self.context.results
-    }
-
-    pub fn results_mut(&mut self) -> &mut [Val] {
         self.context.results
     }
 
@@ -189,16 +218,14 @@ impl<D, C> DerefMut for GuestResult<'_, D, C> {
     }
 }
 
+/// Like `GuestResult`, but for asynchronous WASM function calls.
 pub struct AsyncGuestResult<'c, D: Send, C> {
     context: GuestCallData<'c, D, C>,
 }
 
 impl<'c, D: Send, C> AsyncGuestResult<'c, D, C> {
+    /// Returns an immutable reference to the results of the WASM function call.
     pub fn results(&self) -> &[Val] {
-        self.context.results
-    }
-
-    pub fn results_mut(&mut self) -> &mut [Val] {
         self.context.results
     }
 
@@ -224,6 +251,8 @@ impl<'c, D: Send, C> DerefMut for AsyncGuestResult<'c, D, C> {
     }
 }
 
+/// A trampoline that manages multiple interfaces and their respect trampoline functions and
+/// contexts for a component package.
 pub struct PackageTrampoline<T, C> {
     trampoline: T,
     interface_context_overrides: HashMap<String, C>,
@@ -231,6 +260,7 @@ pub struct PackageTrampoline<T, C> {
 }
 
 impl<T, C> PackageTrampoline<T, C> {
+    /// Creates a new `PackageTrampoline` with the given trampoline and a default context.
     pub fn new(trampoline: T) -> Self
     where
         C: Default,
@@ -238,6 +268,7 @@ impl<T, C> PackageTrampoline<T, C> {
         Self::with_default_context(trampoline, C::default())
     }
 
+    /// Creates a new `PackageTrampoline` with the given trampoline and a specific default context.
     pub fn with_default_context(trampoline: T, default_context: C) -> Self {
         Self {
             trampoline,
@@ -246,31 +277,41 @@ impl<T, C> PackageTrampoline<T, C> {
         }
     }
 
+    /// Returns a reference to the trampoline function.
     pub fn trampoline(&self) -> &T {
         &self.trampoline
     }
 
+    /// Returns a reference to the trampoline context used for all interfaces not otherwise defined.
     pub fn default_context(&self) -> &C {
         &self.default_context
     }
 
+    /// Sets the default context for the trampoline.
     pub fn set_default_context(&mut self, context: C) {
         self.default_context = context;
     }
 
+    /// Returns a reference to the trampoline context for a specific interface, if it has been
+    /// overridden. If `None` is return, it's expected that the default context will be used.
     pub fn get_interface_context(&self, interface_name: &str) -> Option<&C> {
         self.interface_context_overrides.get(interface_name)
     }
 
+    /// Sets the trampoline context for a specific interface, overriding the default context.
     pub fn set_interface_context(&mut self, interface_name: &str, context: C) {
         self.interface_context_overrides
             .insert(interface_name.to_string(), context);
     }
 
+    /// Removes the trampoline context override for a specific interface, reverting to the default.
+    ///
+    /// If the interface context override does not exist, this is a no-op.
     pub fn remove_interface_context(&mut self, interface_name: &str) {
         self.interface_context_overrides.remove(interface_name);
     }
 
+    /// Returns an `InterfaceTrampoline` for the specified interface name, using the context
     pub fn interface_trampoline(&self, interface_name: &str) -> InterfaceTrampoline<T, C>
     where
         T: Clone,
@@ -288,6 +329,7 @@ impl<T, C> PackageTrampoline<T, C> {
     }
 }
 
+/// A trampoline that allows for calling a specific interface function with a context.
 #[derive(Clone)]
 pub struct InterfaceTrampoline<T, C> {
     trampoline: T,
@@ -295,6 +337,8 @@ pub struct InterfaceTrampoline<T, C> {
 }
 
 impl<T, C> InterfaceTrampoline<T, C> {
+    /// Runs the specified function with the given arguments and results, using the trampoline for
+    /// execution interception.
     pub fn bounce<'c, D>(
         &'c self,
         function: &'c Func,
@@ -322,6 +366,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
         })
     }
 
+    /// Like `bounce`, but for asynchronous function calls.
     pub async fn bounce_async<'c, D>(
         &'c self,
         function: &'c Func,
@@ -354,6 +399,15 @@ impl<T, C> InterfaceTrampoline<T, C> {
     }
 }
 
+/// An abstract trampoline that is either defined for synchronous or asynchronous WASM function calls.
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""))]
+pub enum DynInterfaceTrampoline<D, C: Clone> {
+    Sync(InterfaceTrampoline<Arc<dyn Trampoline<D, C>>, C>),
+    Async(InterfaceTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>),
+}
+
+/// A package-level trampoline factory for each interface name.
 pub trait DynPackageTrampoline<D, C: Clone> {
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C>;
 }
@@ -370,11 +424,4 @@ impl<D, C: Clone> DynPackageTrampoline<D, C>
     fn interface_trampoline(&self, interface_name: &str) -> DynInterfaceTrampoline<D, C> {
         DynInterfaceTrampoline::Async(self.interface_trampoline(interface_name))
     }
-}
-
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-pub enum DynInterfaceTrampoline<D, C: Clone> {
-    Sync(InterfaceTrampoline<Arc<dyn Trampoline<D, C>>, C>),
-    Async(InterfaceTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>),
 }
