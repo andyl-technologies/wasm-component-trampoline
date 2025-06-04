@@ -4,12 +4,12 @@
   lib,
   ...
 }:
-
 {
   packages = with pkgs; [
     cargo-watch
     git
     lld
+    sccache
     wasm-tools
     wasmtime
   ];
