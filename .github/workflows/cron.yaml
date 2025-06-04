@@ -20,17 +20,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup devenv
-        uses: andyl-technologies/andyl-github-action/setup-devenv@master
-
-      - name: Setup Rust cache
-        uses: andyl-technologies/andyl-github-action/rust-cache@master
-        with:
-          cache-all-crates: true
-          save-condition: true
-
       - name: Run coverage
-        run: devenv shell wasm-trampoline-coverage
+        run: nix run nixpkgs#devenv -- shell wasm-trampoline-coverage
 
       - name: Generate coverage report
         uses: clearlyip/code-coverage-report-action@v5
