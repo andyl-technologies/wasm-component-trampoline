@@ -25,12 +25,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Test adding Nix binaries to PATH
+      - name: Add Nix binaries to PATH
         run: |
-          echo "$HOME/.nix-profile/bin" >> "$GITHUB_PATH"
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
       - name: Run tests
-        run: devenv test
+        run: nix run nixpkgs#devenv -- test
 
   coverage:
     strategy:
