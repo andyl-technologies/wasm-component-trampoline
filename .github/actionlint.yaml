@@ -2,4 +2,4 @@ self-hosted-runner:
   labels:
     - ubuntu-latest-16
     - ubuntu-latest-32
-    - ci01-hio1
+    - ci-enterprise-large
