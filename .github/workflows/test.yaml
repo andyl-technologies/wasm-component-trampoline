@@ -18,7 +18,7 @@ jobs:
       CARGO_INCREMENTAL: '0'
     strategy:
       matrix:
-        os: [ubuntu-latest-16]
+        os: [ci01-hio1]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -40,7 +40,7 @@ jobs:
   coverage:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ci01-hio1]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo

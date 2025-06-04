@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '0 0 1 * *'
   push:
-    branches: [ master ]
+    branches: [master]
 
 permissions:
   actions: write
@@ -14,7 +14,7 @@ jobs:
   cron-coverage:
     strategy:
       matrix:
-        os: [ubuntu-latest-16]
+        os: [ci01-hio1]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
