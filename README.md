@@ -12,7 +12,7 @@ cargo install wasm-component-trampoline
 ## Usage
 
 Sync WASM runtime example:
-https://github.com/andyl-technologies/wasm-trampoline/blob/master/tests/runner/src/bin/runner.rs#L1-L200
+https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/runner.rs#L1-L200
 
 Async WASM runtime example:
-https://github.com/andyl-technologies/wasm-trampoline/blob/master/tests/runner/src/bin/async-runner.rs#L1-L200
+https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/async-runner.rs#L1-L200

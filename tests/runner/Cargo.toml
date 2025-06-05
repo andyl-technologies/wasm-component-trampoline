@@ -8,7 +8,7 @@ anyhow.workspace = true
 semver.workspace = true
 tokio = { version = "1.0", features = ["full"] }
 wasmtime = { workspace = true, features = ["component-model", "async"] }
-wasm-trampoline = { path = "../.." }
+wasm-component-trampoline = { path = "../.." }
 
 [[bin]]
 name = "async-runner"

@@ -11,7 +11,7 @@ default-members = [
 ]
 
 [package]
-name = "wasm-trampoline"
+name = "wasm-component-trampoline"
 authors.workspace = true
 edition.workspace = true
 version.workspace = true
