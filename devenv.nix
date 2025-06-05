@@ -5,14 +5,19 @@
   ...
 }:
 {
-  packages = with pkgs; [
-    cargo-watch
-    git
-    lld
-    sccache
-    wasm-tools
-    wasmtime
-  ];
+  packages =
+    with pkgs;
+    [
+      cargo-watch
+      git
+      lld
+      sccache
+      wasm-tools
+      wasmtime
+    ]
+    ++ lib.optionals pkgs.stdenv.isLinux [
+      cargo-llvm-cov
+    ];
 
   # https://devenv.sh/languages/
   languages.rust = {
