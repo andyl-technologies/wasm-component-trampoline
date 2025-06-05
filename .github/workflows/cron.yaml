@@ -20,6 +20,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Add Nix binaries to PATH
+        run: |
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+
       - name: Run coverage
         run: nix run nixpkgs#devenv -- shell wasm-trampoline-coverage
 
