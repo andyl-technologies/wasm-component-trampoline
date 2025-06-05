@@ -1,7 +1,10 @@
 WASM Component Trampoline
 =========================
 
-Library for linking WASM components together using host "trampoline" functions.
+Library for linking WASM components together using host "trampoline" functions, that can securely read/modify the host
+context between component calls. Designed for WIT (WASM Interface Types) components, but can be used with others.
+
+![WASM Component Trampoline Example Diagram](/docs/images/example_diagram.svg)
 
 ## Installation
 
