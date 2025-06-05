@@ -28,6 +28,13 @@ jobs:
         run: |
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
+      - name: Restore Cargo build cache
+        id: restore_cargo_build_cache
+        uses: MasterworksIO/action-local-cache@2
+        with:
+          path: ./target
+          key: tests-cargo-build-cache
+
       - name: Run tests
         run: nix run nixpkgs#devenv -- test
 
@@ -40,9 +47,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Test adding Nix binaries to PATH
+      - name: Add Nix binaries to PATH
         run: |
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Cargo build cache
+        id: restore_cargo_build_cache
+        uses: MasterworksIO/action-local-cache@2
+        with:
+          path: ./target
+          key: coverage-tests-cargo-build-cache
 
       - name: Run coverage tests
         run: nix run nixpkgs#devenv -- shell wasm-trampoline-coverage

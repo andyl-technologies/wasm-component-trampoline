@@ -24,6 +24,13 @@ jobs:
         run: |
           echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
 
+      - name: Restore Cargo build cache
+        id: restore_cargo_build_cache
+        uses: MasterworksIO/action-local-cache@2
+        with:
+          path: ./target
+          key: cargo-build-cache
+
       - name: Run coverage
         run: nix run nixpkgs#devenv -- shell wasm-trampoline-coverage
 
