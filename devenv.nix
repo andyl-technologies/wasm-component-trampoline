@@ -11,11 +11,13 @@
       cargo-watch
       git
       lld
-      sccache
       wasm-tools
       wasmtime
     ]
     ++ lib.optionals pkgs.stdenv.isLinux [
+      # This is broken in `nixpkgs` for non-Linux operating systems,
+      # and is only used in CI.
+      # https://github.com/NixOS/nixpkgs/blob/7912201754791808752c8974bd9de34e74568e46/pkgs/by-name/ca/cargo-llvm-cov/package.nix#L104
       cargo-llvm-cov
     ];
 

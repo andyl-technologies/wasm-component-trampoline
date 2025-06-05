@@ -12,9 +12,6 @@ permissions:
 
 jobs:
   tests:
-    env:
-      RUSTC_WRAPPER: 'sccache'
-      CARGO_INCREMENTAL: '0'
     strategy:
       matrix:
         os: [ci-enterprise-medium]
