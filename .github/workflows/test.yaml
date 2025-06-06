@@ -3,7 +3,7 @@ name: 'Run Tests'
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [ master ]
 
 permissions:
   actions: read
@@ -18,7 +18,7 @@ jobs:
       CARGO_INCREMENTAL: '0'
     strategy:
       matrix:
-        os: [ubuntu-latest-16]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -26,10 +26,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup devenv
-        uses: andyl-technologies/andyl-github-action/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@master
 
       - name: Setup Rust cache
-        uses: andyl-technologies/andyl-github-action/rust-cache@master
+        uses: andyl-technologies/github-actions/rust-cache@master
         with:
           cache-all-crates: true
           use-ccache: true
@@ -40,17 +40,17 @@ jobs:
   coverage:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup devenv
-        uses: andyl-technologies/andyl-github-action/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@master
 
       - name: Setup Rust cache
-        uses: andyl-technologies/andyl-github-action/rust-cache@master
+        uses: andyl-technologies/github-actions/rust-cache@master
 
       - name: Run coverage tests
         run: devenv shell wasm-trampoline-coverage
