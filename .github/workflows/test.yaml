@@ -73,7 +73,6 @@ jobs:
           path: code-coverage-results.md
 
   check-publish:
-    if: ${{ github.event_name == 'pull_request' }}
     strategy:
       matrix:
         os: [ ubuntu-latest ]
