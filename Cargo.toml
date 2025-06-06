@@ -11,6 +11,7 @@ default-members = [
 
 [package]
 name = "wasm-component-trampoline"
+description = "A library for linking WASM components together using host trampoline functions"
 authors.workspace = true
 description.workspace = true
 edition.workspace = true
