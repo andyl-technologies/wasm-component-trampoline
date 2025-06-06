@@ -12,13 +12,17 @@ default-members = [
 [package]
 name = "wasm-component-trampoline"
 authors.workspace = true
+description.workspace = true
 edition.workspace = true
+license.workspace = true
 version.workspace = true
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "0.1.0"
+description = "A library for intercepting WebAssembly components calls with a user-provided trampoline."
 edition = "2024"
+license = "MIT"
+version = "0.1.0"
 
 [features]
 default = [
