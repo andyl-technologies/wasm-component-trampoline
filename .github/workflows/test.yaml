@@ -71,3 +71,22 @@ jobs:
         with:
           recreate: true
           path: code-coverage-results.md
+
+  check-publish:
+    if: ${{ github.event_name == 'pull_request' }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup devenv
+        uses: andyl-technologies/github-actions/setup-devenv@master
+
+      - name: Verify crate publishing
+        uses: katyo/publish-crates@v2
+        with:
+          dry-run: true
