@@ -2,6 +2,7 @@
 name = "runner"
 version = "0.1.0"
 edition.workspace = true
+publish = []
 
 [target.'cfg(unix)'.dependencies]
 anyhow.workspace = true
