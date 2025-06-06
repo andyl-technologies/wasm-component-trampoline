@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-cargo build --target wasm32-unknown-unknown --release --workspace -p wasm-component-trampoline -p runner
+cargo build --target wasm32-unknown-unknown --release --workspace
 
 for x in kvstore logger application; do
   wasm-tools component new \
