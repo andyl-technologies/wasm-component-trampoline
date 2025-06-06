@@ -24,7 +24,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 ///
 /// ```rust
 /// use semver::Version;
-/// # use wasm_trampoline::semver::VersionMap;
+/// # use wasm_component_trampoline::semver::VersionMap;
 ///
 /// let mut map = VersionMap::new();
 /// map.insert(Version::new(1, 0, 1), "v1.0.1");
@@ -91,7 +91,7 @@ impl<T> VersionMap<T> {
     ///
     /// ```rust
     /// use semver::Version;
-    /// # use wasm_trampoline::semver::VersionMap;
+    /// # use wasm_component_trampoline::semver::VersionMap;
     ///
     /// let mut map = VersionMap::new();
     /// map.insert(Version::new(0, 0, 1), "v0.0.9");
@@ -128,7 +128,7 @@ impl<T> VersionMap<T> {
     ///
     /// ```rust
     /// use semver::Version;
-    /// # use wasm_trampoline::semver::VersionMap;
+    /// # use wasm_component_trampoline::semver::VersionMap;
     ///
     /// let mut map = VersionMap::new();
     /// map.insert(Version::new(0, 0, 1), "v0.0.9");
