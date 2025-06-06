@@ -7,7 +7,6 @@ members = [
 ]
 default-members = [
   ".",
-  "tests/runner",
 ]
 
 [package]
