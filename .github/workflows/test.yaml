@@ -90,3 +90,4 @@ jobs:
         uses: katyo/publish-crates@v2
         with:
           dry-run: true
+          ignore-unpublished-changes: false
