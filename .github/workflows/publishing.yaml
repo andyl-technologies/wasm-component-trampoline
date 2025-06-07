@@ -7,7 +7,6 @@ on:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'push' }}
     strategy:
       matrix:
         os: [ ubuntu-latest ]
