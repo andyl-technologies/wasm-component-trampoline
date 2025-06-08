@@ -6,7 +6,11 @@ WASM Component Trampoline
 ![License](https://img.shields.io/crates/l/wasm-component-trampoline.svg)
 
 Library for linking WASM components together using host "trampoline" functions, that can securely read/modify the host
-context between component calls. Designed for WIT (WASM Interface Types) components, but can be used with others.
+context between component calls.
+
+Designed for versioned WIT (WASM Interface Type) components, but can be used with others. Versioned dependency
+resolution between components is done in the same style as the Wasmtime component linker
+([docs](https://docs.wasmtime.dev/api/wasmtime/component/struct.Linker.html#names-and-semver)).
 
 ![WASM Component Trampoline Example Diagram](https://raw.githubusercontent.com/andyl-technologies/wasm-component-trampoline/refs/heads/master/docs/images/example_diagram.svg)
 
@@ -18,5 +22,5 @@ cargo add wasm-component-trampoline
 
 ## Usage
 
- - [Sync WASM runtime example](https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/runner.rs)
- - [Async WASM runtime example](https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/async-runner.rs)
+- [Sync WASM runtime example](https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/runner.rs)
+- [Async WASM runtime example](https://github.com/andyl-technologies/wasm-component-trampoline/blob/master/tests/runner/src/bin/async-runner.rs)
