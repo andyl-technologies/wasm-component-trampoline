@@ -13,7 +13,7 @@ context between component calls. Designed for WIT (WASM Interface Types) compone
 ## Installation
 
 ```shell
-cargo install wasm-component-trampoline
+cargo add wasm-component-trampoline
 ```
 
 ## Usage
