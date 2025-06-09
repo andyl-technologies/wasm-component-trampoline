@@ -9,6 +9,7 @@
   packages = with pkgs; [
     cargo-watch
     git
+    jq
     lld
     wasm-tools
     wasmtime
