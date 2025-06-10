@@ -16,11 +16,13 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 version.workspace = true
+categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
 version = "0.1.2-pre"
 edition = "2024"
+rust-version = "1.85"
 license = "MIT"
 
 [features]
