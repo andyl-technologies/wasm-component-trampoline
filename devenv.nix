@@ -53,6 +53,7 @@
 
   git-hooks.hooks.actionlint.enable = true;
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
+  git-hooks.hooks.vale.enable = true;
 
   scripts."miri-test" = {
     description = "Run miri tests";
