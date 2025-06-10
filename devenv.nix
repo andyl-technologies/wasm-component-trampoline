@@ -7,10 +7,10 @@
 
 {
   packages = with pkgs; [
+    cargo-nextest
     cargo-watch
     git
     jq
-    lld
     wasm-tools
     wasmtime
   ];
@@ -40,10 +40,13 @@
   };
 
   enterTest = ''
-    cargo test --workspace
-    cargo build --workspace --target wasm32-unknown-unknown
-    cargo build --workspace --target wasm32-wasip2
+    set -e
     cargo fmt --check --all
+    cargo check --workspace --all-targets
+    cargo nextest run --workspace
+    for target in wasm32-unknown-unknown wasm32-wasip2; do
+      cargo build --workspace --target ''${target}
+    done
     tests/runner/build.sh
   '';
 
@@ -55,7 +58,7 @@
     exec = ''
       tests/runner/build.sh >/dev/null
       cargo llvm-cov clean --workspace
-      cargo llvm-cov test --workspace --no-report --release
+      cargo llvm-cov nextest --workspace --no-report --release
       cargo llvm-cov run --bin runner -p runner --release --no-report
       cargo llvm-cov run --bin async-runner -p runner --release --no-report
       cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
