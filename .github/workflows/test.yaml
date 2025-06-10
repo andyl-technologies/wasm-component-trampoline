@@ -37,6 +37,27 @@ jobs:
       - name: Run tests
         run: devenv test
 
+  test-miri:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup devenv
+        uses: andyl-technologies/github-actions/setup-devenv@master
+
+      - name: Setup Rust cache
+        uses: andyl-technologies/github-actions/rust-cache@master
+        with:
+          cache-all-crates: true
+
+      - name: Run tests
+        run: devenv shell miri-test
+
   coverage:
     strategy:
       matrix:
