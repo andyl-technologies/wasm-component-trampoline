@@ -32,7 +32,7 @@ jobs:
         uses: andyl-technologies/github-actions/rust-cache@master
         with:
           cache-all-crates: true
-          use-ccache: true
+          use-sccache: true
 
       - name: Run tests
         run: devenv test
