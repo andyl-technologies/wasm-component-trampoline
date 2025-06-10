@@ -1,21 +1,22 @@
-# Contributing to the Project
+# Contributing to the project
 
 Thank you for your interest in contributing to wasm-component-trampoline.
-We welcome contributions from the community and appreciate your efforts to improve the codebase.
+We welcome community contributions and appreciate your efforts to improve the codebase.
 
-## Pre-requisite Knowledge
+## Pre-requisite knowledge
 
 Before you start contributing, please ensure you have the following:
-1. A working knowledge of Rust and [WebAssembly](https://webassembly.org/) (or a willingness to learn).
+
+1. A working knowledge of [Rust](https://www.rust-lang.org/) and [WebAssembly](https://webassembly.org/) or a willingness to learn.
 1. Familiarity with [Wasmtime](https://docs.wasmtime.dev/) as it relates to the [WebAssembly component model](https://component-model.bytecodealliance.org/).
 
-## How to Develop
+## How to develop
 
-We use [devenv](https://devenv.sh/) to manage our development environment.
+Use [devenv](https://devenv.sh/) to manage the development environment.
 
 1. **Clone the Repository**: You know how to do that.
-1. **Install direnv**: Follow the instructions at [direnv Installation](https://direnv.net/docs/installation.html) to install direnv.
-1. **Install Devenv**: Follow the instructions at [Devenv Installation](https://devenv.sh/docs/installation) to install devenv.
+1. **Install direnv**: Follow the instructions at [direnv Installation](https://direnv.net/docs/installation.html) to install `direnv`.
+1. **Install Devenv**: Follow the instructions at [devenv Installation](https://devenv.sh/docs/installation) to install `devenv`.
 1. `direnv allow $PWD` and/or `devenv shell` to enter the development environment.
 1. `devenv test` to run all the tests locally.
 1. (OPTIONAL) `devenv shell wasm-trampoline-coverage` to generate code coverage. `cargo llvm-cov  report --html --open --release` to view a coverage report in your browser.
@@ -24,7 +25,9 @@ We use [devenv](https://devenv.sh/) to manage our development environment.
 
 [License](LICENSE)
 
-## Contribution Agreement
+## Certifying contributions
+
+<!-- vale off -->
 
 [Developer Certificate of Origin](https://developercertificate.org/)
 Version 1.1
@@ -60,3 +63,5 @@ By making a contribution to this project, I certify that:
     personal information I submit with it, including my sign-off) is
     maintained indefinitely and may be redistributed consistent with
     this project or the open source license(s) involved.
+
+<!-- vale on -->
