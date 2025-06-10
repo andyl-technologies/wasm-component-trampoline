@@ -2,6 +2,7 @@
 name = "kvstore"
 version = "2.1.6"
 edition.workspace = true
+publish = []
 
 [lib]
 crate-type = ["cdylib"]

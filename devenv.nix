@@ -9,6 +9,7 @@
   packages = with pkgs; [
     cargo-watch
     git
+    jq
     lld
     wasm-tools
     wasmtime
@@ -46,8 +47,8 @@
     tests/runner/build.sh
   '';
 
-  git-hooks.hooks.nixfmt-rfc-style.enable = true;
   git-hooks.hooks.actionlint.enable = true;
+  git-hooks.hooks.nixfmt-rfc-style.enable = true;
 
   scripts."wasm-trampoline-coverage" = {
     description = "Run wasm-trampoline-coverage";

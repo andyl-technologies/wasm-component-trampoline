@@ -18,7 +18,7 @@ mod runner {
 
     use std::sync::Arc;
     use tokio::fs;
-    use wasm_trampoline::{CompositionGraph, GuestCall, GuestResult, Trampoline};
+    use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, Trampoline};
     use wasmtime::{Config, Engine, Store, component::Linker};
 
     wasmtime::component::bindgen!({
@@ -72,7 +72,8 @@ mod runner {
         path: &str,
         name: &str,
         version: Version,
-    ) -> Result<wasm_trampoline::PackageId, wasm_trampoline::AddPackageError> {
+    ) -> Result<wasm_component_trampoline::PackageId, wasm_component_trampoline::AddPackageError>
+    {
         eprintln!("Loading {path} component...");
         let wasm_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
@@ -89,7 +90,8 @@ mod runner {
             });
 
         let trampoline: Arc<dyn Trampoline<AppData, ()>> = Arc::new(PassthroughTrampoline {});
-        let pkg = wasm_trampoline::PackageTrampoline::with_default_context(trampoline, ());
+        let pkg =
+            wasm_component_trampoline::PackageTrampoline::with_default_context(trampoline, ());
 
         let ret = graph.add_package(name.to_string(), version, pkg_bytes, pkg);
         eprintln!("{name} component loaded successfully.");

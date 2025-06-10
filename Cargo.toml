@@ -7,19 +7,23 @@ members = [
 ]
 default-members = [
   ".",
-  "tests/runner",
 ]
 
 [package]
-name = "wasm-trampoline"
+name = "wasm-component-trampoline"
+description = "A library for linking WASM components together using host trampoline functions"
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
 version.workspace = true
+categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "0.1.0"
+version = "0.1.2-pre"
 edition = "2024"
+rust-version = "1.85"
+license = "MIT"
 
 [features]
 default = [

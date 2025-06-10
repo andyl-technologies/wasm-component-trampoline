@@ -3,6 +3,7 @@ use snafu::{ResultExt, Snafu};
 use std::fmt::Display;
 use std::str::FromStr;
 
+/// A fully-qualified path to a WIT interface, with an optional version.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct ForeignInterfacePath {
     package_name: String,
@@ -11,8 +12,13 @@ pub struct ForeignInterfacePath {
 }
 
 impl ForeignInterfacePath {
+    /// Creates a new `ForeignInterfacePath` with the given package name, interface name, and optional version.
     #[must_use]
-    pub fn new(package_name: String, interface_name: String, version: Option<Version>) -> Self {
+    pub const fn new(
+        package_name: String,
+        interface_name: String,
+        version: Option<Version>,
+    ) -> Self {
         ForeignInterfacePath {
             package_name,
             interface_name,
@@ -20,16 +26,19 @@ impl ForeignInterfacePath {
         }
     }
 
+    /// Returns the package name component of the interface path.
     #[must_use]
     pub fn package_name(&self) -> &str {
         self.package_name.as_ref()
     }
 
+    /// Returns the interface name component of the interface path.
     #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    /// Returns the version component of the interface path, if one is specified.
     #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
@@ -48,18 +57,20 @@ impl From<ForeignInterfacePath> for InterfacePath {
 
 impl Display for ForeignInterfacePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref version) = self.version {
-            write!(
-                f,
-                "{}/{}@{}",
-                self.package_name, self.interface_name, version
-            )
-        } else {
-            write!(f, "{}/{}", self.package_name, self.interface_name)
-        }
+        write!(
+            f,
+            "{}/{}{}",
+            self.package_name,
+            self.interface_name,
+            self.version
+                .as_ref()
+                .map_or_else(|| "".to_string(), |v| format!("@{v}"))
+        )
     }
 }
 
+/// Represents a path to a WIT interface, which may be local (without a package name) or foreign
+/// (with a package name). The version is optional in both cases.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct InterfacePath {
     package_name: Option<String>,
@@ -69,7 +80,7 @@ pub struct InterfacePath {
 
 impl InterfacePath {
     #[must_use]
-    pub fn new(
+    pub const fn new(
         package_name: Option<String>,
         interface_name: String,
         version: Option<Version>,
@@ -81,21 +92,26 @@ impl InterfacePath {
         }
     }
 
+    /// Returns the package name component of the interface path, if one is specified.
     #[must_use]
     pub fn package_name(&self) -> Option<&str> {
         self.package_name.as_deref()
     }
 
+    /// Returns the interface name component of the interface path.
     #[must_use]
     pub fn interface_name(&self) -> &str {
         &self.interface_name
     }
 
+    /// Returns the version component of the interface path, if one is specified.
     #[must_use]
     pub fn version(&self) -> Option<&Version> {
         self.version.as_ref()
     }
 
+    /// Converts this `InterfacePath` into a `ForeignInterfacePath`, if it has a package name,
+    /// otherwise returns `None`.
     #[must_use]
     pub fn into_foreign(self) -> Option<ForeignInterfacePath> {
         Some(ForeignInterfacePath {
@@ -152,22 +168,17 @@ impl FromStr for InterfacePath {
 
 impl Display for InterfacePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref version) = self.version {
-            write!(
-                f,
-                "{}/{}@{}",
-                self.package_name.as_ref().unwrap_or(&"".to_string()),
-                self.interface_name,
-                version
-            )
-        } else {
-            write!(
-                f,
-                "{}/{}",
-                self.package_name.as_ref().unwrap_or(&"".to_string()),
-                self.interface_name
-            )
-        }
+        write!(
+            f,
+            "{}{}{}",
+            self.package_name
+                .as_ref()
+                .map_or("".to_string(), |p| format!("{p}/")),
+            self.interface_name,
+            self.version
+                .as_ref()
+                .map_or_else(|| "".to_string(), |v| format!("@{v}")),
+        )
     }
 }
 
@@ -184,23 +195,96 @@ pub enum InterfacePathParseError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const PACKAGE: &str = "package_name/interface_name@1.0.0";
+    const INTERFACE_ONLY: &str = "interface_name";
+    const PACKAGE_WITHOUT_VERSION: &str = "package_name/interface_name";
+
+    #[test]
+    fn test_path_display() {
+        for package in [PACKAGE, PACKAGE_WITHOUT_VERSION] {
+            let path = InterfacePath::from_str(package).unwrap();
+            assert_eq!(package, format!("{path}"));
+            let foreign_path = path.clone().into_foreign().unwrap();
+            assert_eq!(package, format!("{foreign_path}"));
+        }
+
+        let interface_only = InterfacePath::from_str(INTERFACE_ONLY).unwrap();
+        assert!(interface_only.clone().into_foreign().is_none());
+    }
+
+    #[test]
+    fn test_interface_path_roundtrip() {
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
+        // Convert to ForeignInterfacePath and back
+        assert_eq!(path, path.clone().into_foreign().unwrap().into());
+
+        let interface_only = InterfacePath::from_str(INTERFACE_ONLY).unwrap();
+        assert_eq!(None, interface_only.clone().into_foreign());
+
+        // Parse the string representation back into InterfacePath
+        assert_eq!(
+            path,
+            InterfacePath::new(
+                path.package_name().map(String::from),
+                path.interface_name().to_string(),
+                path.version().cloned(),
+            )
+        );
+    }
+
+    #[test]
+    fn test_foreign_interface_path_roundtrip() {
+        for package in [PACKAGE, PACKAGE_WITHOUT_VERSION] {
+            let path = InterfacePath::from_str(package).unwrap();
+            let foreign_path: ForeignInterfacePath = path.clone().into_foreign().unwrap();
+
+            assert_eq!(
+                foreign_path,
+                ForeignInterfacePath::new(
+                    path.package_name().unwrap().to_string(),
+                    path.interface_name().to_string(),
+                    path.version().cloned()
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn test_foreign_interface_path() {
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
+        let foreign_path: ForeignInterfacePath = path.clone().into_foreign().unwrap();
+        assert_eq!(foreign_path.package_name(), "package_name");
+        assert_eq!(foreign_path.interface_name(), "interface_name");
+        assert_eq!(
+            foreign_path.version(),
+            Some(&Version::parse("1.0.0").unwrap())
+        );
+
+        let fp_string = foreign_path.to_string();
+        assert_eq!(PACKAGE, fp_string);
+        assert_eq!(PACKAGE, InterfacePath::from(foreign_path).to_string());
+        assert_eq!(fp_string, path.to_string());
+    }
 
     #[test]
     fn test_interface_path_parsing() {
-        let path = InterfacePath::from_str("package_name/interface_name@1.0.0").unwrap();
+        let path = InterfacePath::from_str(PACKAGE).unwrap();
         assert_eq!(path.package_name(), Some("package_name"));
         assert_eq!(path.interface_name(), "interface_name");
         assert_eq!(path.version(), Some(&Version::parse("1.0.0").unwrap()));
+        assert_eq!(path.to_string(), PACKAGE);
 
         let path = InterfacePath::from_str("interface_name").unwrap();
         assert_eq!(path.package_name(), None);
         assert_eq!(path.interface_name(), "interface_name");
         assert_eq!(path.version(), None);
+        assert_eq!(path.to_string(), "interface_name");
 
         let path = InterfacePath::from_str("package_name/interface_name").unwrap();
         assert_eq!(path.package_name(), Some("package_name"));
         assert_eq!(path.interface_name(), "interface_name");
         assert_eq!(path.version(), None);
+        assert_eq!(path.to_string(), "package_name/interface_name");
 
         let path_err = InterfacePath::from_str("package_name/interface_name/").unwrap_err();
         assert!(matches!(path_err, InterfacePathParseError::FormatError));

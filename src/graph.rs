@@ -14,6 +14,8 @@ use wac_types::{InterfaceId, ItemKind, Package};
 use wasmtime::component::{Component, Instance, LinkerInstance};
 use wasmtime::{AsContextMut, component};
 
+/// A graph for composing multiple WebAssembly components into a single linker, while allowing for
+/// automatic insertion of "trampoline" functions between cross-component calls.
 #[derive(Derivative, Debug)]
 #[derivative(Default(bound = ""))]
 pub struct CompositionGraph<D, C: Clone = ()> {
@@ -25,11 +27,15 @@ pub struct CompositionGraph<D, C: Clone = ()> {
 }
 
 impl<D, C: Clone> CompositionGraph<D, C> {
+    /// Creates a new empty `CompositionGraph`.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Adds a package (component) to the composition graph.
+    ///
+    /// Components can be added in any order, and dependencies will be resolved at instantiation time.
     pub fn add_package(
         &mut self,
         name: String,
@@ -135,6 +141,10 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(package_id)
     }
 
+    /// Instantiates a component from the composition graph, resolving all component dependencies.
+    ///
+    /// Host functions and other resources can be provided through the `linker` argument prior to
+    /// instantiation.
     pub fn instantiate(
         &mut self,
         package_id: PackageId,
@@ -196,6 +206,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         Ok(instance)
     }
 
+    /// Like `instantiate`, but for asynchronous contexts.
     pub async fn instantiate_async(
         &mut self,
         package_id: PackageId,
@@ -600,6 +611,7 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
     }
 }
 
+/// Represents a unique identifier for a package within the composition graph.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct PackageId {
     id: usize,
@@ -618,15 +630,13 @@ struct InterfaceExport<D, C: Clone> {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum AddPackageError {
-    DuplicatePackage {
-        name: String,
-        version: Version,
-    },
+    #[snafu(display("Duplicate package: {}@{:?}", name, version))]
+    DuplicatePackage { name: String, version: Version },
 
-    PackageParseError {
-        source: anyhow::Error,
-    },
+    #[snafu(display("Failed to parse package: {}", source))]
+    PackageParseError { source: anyhow::Error },
 
+    #[snafu(display("Failed to parse import '{}': {}", interface, source))]
     ImportParseError {
         interface: String,
         source: InterfacePathParseError,
