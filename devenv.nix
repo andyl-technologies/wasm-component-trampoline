@@ -52,6 +52,7 @@
 
   git-hooks.hooks.actionlint.enable = true;
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
+  git-hooks.hooks.vale.enable = true;
 
   scripts."wasm-trampoline-coverage" = {
     description = "Run wasm-trampoline-coverage";
