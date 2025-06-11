@@ -1,6 +1,10 @@
 
 # cargo-vet imports lock
 
+[[unpublished.wasm-component-trampoline]]
+version = "0.1.2-pre"
+audited_as = "0.1.1"
+
 [[publisher.anyhow]]
 version = "1.0.98"
 when = "2025-04-14"
