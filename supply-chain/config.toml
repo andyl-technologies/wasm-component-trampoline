@@ -20,10 +20,6 @@ audit-as-crates-io = true
 version = "0.24.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.allocator-api2]]
-version = "0.2.21"
-criteria = "safe-to-deploy"
-
 [[exemptions.derivative]]
 version = "2.2.0"
 criteria = "safe-to-deploy"
@@ -48,10 +44,6 @@ criteria = "safe-to-deploy"
 version = "0.14.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.log]]
-version = "0.4.27"
-criteria = "safe-to-deploy"
-
 [[exemptions.miniz_oxide]]
 version = "0.8.8"
 criteria = "safe-to-deploy"
@@ -64,20 +56,12 @@ criteria = "safe-to-deploy"
 version = "1.21.3"
 criteria = "safe-to-deploy"
 
-[[exemptions.postcard]]
-version = "1.1.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.psm]]
 version = "0.1.26"
 criteria = "safe-to-deploy"
 
 [[exemptions.redox_syscall]]
 version = "0.5.12"
-criteria = "safe-to-deploy"
-
-[[exemptions.signal-hook-registry]]
-version = "1.4.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.snafu]]
@@ -94,32 +78,4 @@ criteria = "safe-to-deploy"
 
 [[exemptions.wasm-component-trampoline]]
 version = "0.1.2-pre"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows-sys]]
-version = "0.52.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows-sys]]
-version = "0.59.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_aarch64_msvc]]
-version = "0.52.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_gnu]]
-version = "0.52.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_i686_msvc]]
-version = "0.52.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_gnu]]
-version = "0.52.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.windows_x86_64_msvc]]
-version = "0.52.6"
 criteria = "safe-to-deploy"
