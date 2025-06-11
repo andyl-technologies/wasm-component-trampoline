@@ -111,3 +111,19 @@ jobs:
         with:
           dry-run: true
           ignore-unpublished-changes: false
+
+  check-vet:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup devenv
+        uses: andyl-technologies/github-actions/setup-devenv@master
+
+      - name: Run vet
+        run: devenv shell cargo vet --locked
