@@ -1,7 +1,35 @@
 
 # cargo-vet audits file
 
-[audits]
+[[audits.allocator-api2]]
+who = "bill fumerola <bill@andyl.com>"
+criteria = "safe-to-deploy"
+delta = "0.2.20 -> 0.2.21"
+notes = "drop behavior"
+
+[[audits.log]]
+who = "bill fumerola <bill@andyl.com>"
+criteria = "safe-to-deploy"
+delta = "0.4.26 -> 0.4.27"
+notes = "macro expansion rules"
+
+[[audits.postcard]]
+who = "bill fumerola <bill@andyl.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.8 -> 1.1.1"
+notes = """
+- some code moved to `postcard-schema`
+- alloc feature
+"""
+
+[[audits.signal-hook-registry]]
+who = "bill fumerola <bill@andyl.com>"
+criteria = "safe-to-deploy"
+delta = "1.4.1 -> 1.4.5"
+notes = """
+- AIX changes
+- use of Box to store global data
+"""
 
 [[trusted.anyhow]]
 criteria = "safe-to-deploy"
@@ -231,6 +259,12 @@ user-id = 189 # Andrew Gallant (BurntSushi)
 start = "2020-01-11"
 end = "2026-06-11"
 
+[[trusted.windows-sys]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-11-15"
+end = "2026-06-11"
+
 [[trusted.windows-targets]]
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
@@ -243,14 +277,44 @@ user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2022-09-01"
 end = "2026-06-11"
 
+[[trusted.windows_aarch64_msvc]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-11-05"
+end = "2026-06-11"
+
+[[trusted.windows_i686_gnu]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-10-28"
+end = "2026-06-11"
+
 [[trusted.windows_i686_gnullvm]]
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2024-04-02"
 end = "2026-06-11"
 
+[[trusted.windows_i686_msvc]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-10-27"
+end = "2026-06-11"
+
+[[trusted.windows_x86_64_gnu]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-10-28"
+end = "2026-06-11"
+
 [[trusted.windows_x86_64_gnullvm]]
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2022-09-01"
+end = "2026-06-11"
+
+[[trusted.windows_x86_64_msvc]]
+criteria = "safe-to-deploy"
+user-id = 64539 # Kenny Kerr (kennykerr)
+start = "2021-10-27"
 end = "2026-06-11"
