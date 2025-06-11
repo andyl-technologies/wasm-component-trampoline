@@ -71,7 +71,3 @@ criteria = "safe-to-deploy"
 [[exemptions.snafu-derive]]
 version = "0.8.6"
 criteria = "safe-to-deploy"
-
-[[exemptions.trait-variant]]
-version = "0.1.2"
-criteria = "safe-to-deploy"

@@ -31,6 +31,12 @@ notes = """
 - use of Box to store global data
 """
 
+[[audits.trait-variant]]
+who = "bill fumerola <bill@andyl.com>"
+criteria = "safe-to-deploy"
+version = "0.1.2"
+notes = "proc-macro magic"
+
 [[audits.wasm-component-trampoline]]
 who = "bill fumerola <bill@andyl.com>"
 criteria = "safe-to-deploy"
