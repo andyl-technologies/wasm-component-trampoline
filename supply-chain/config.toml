@@ -75,7 +75,3 @@ criteria = "safe-to-deploy"
 [[exemptions.trait-variant]]
 version = "0.1.2"
 criteria = "safe-to-deploy"
-
-[[exemptions.wasm-component-trampoline]]
-version = "0.1.2-pre"
-criteria = "safe-to-deploy"
