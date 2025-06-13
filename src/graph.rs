@@ -7,6 +7,7 @@ use semver::Version;
 use slab::Slab;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
+use std::ops::{Deref, Index};
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -19,8 +20,9 @@ use wasmtime::{AsContextMut, component};
 #[derive(Derivative, Debug)]
 #[derivative(Default(bound = ""))]
 pub struct CompositionGraph<D, C: Clone = ()> {
+    nonce: usize,
     types: wac_types::Types,
-    packages: Slab<Package>,
+    packages: Slab<PackageWrapper>,
     package_map: HashMap<String, VersionMap<PackageId>>,
     exported_interfaces: HashMap<ForeignInterfacePath, InterfaceExport<D, C>>,
     imported_interfaces: HashMap<PackageId, Vec<ForeignInterfacePath>>,
@@ -47,8 +49,13 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .context(add_package_error::PackageParseSnafu)?;
 
         let package_id = PackageId {
-            id: self.packages.insert(package),
+            id: self.packages.insert(PackageWrapper {
+                package,
+                nonce: self.nonce,
+            }),
+            nonce: self.nonce,
         };
+        self.nonce += 1;
 
         let version_set = self.package_map.entry(name.to_string()).or_default();
 
@@ -118,7 +125,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         };
 
         for (package_id, package) in &self.packages {
-            let package_id = PackageId { id: package_id };
+            let package_id = PackageId { id: package_id, nonce: package.nonce };
             let package_ty = &self.types[package.ty()];
 
             for (_use_name, use_type) in &package_ty.uses {
@@ -268,6 +275,18 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .context(instantiate_error::ComponentInstantiationSnafu)?;
 
         Ok(instance)
+    }
+    
+    /// Gets a reference to the type collection of the graph.
+    pub fn types(&self) -> &wac_types::Types {
+        &self.types
+    }
+    
+    /// Gets a mutable reference to the type collection of the graph.
+    /// 
+    /// This type collection is used to define types directly in the graph.
+    pub fn types_mut(&mut self) -> &mut wac_types::Types {
+        &mut self.types
     }
 
     fn package_load_order(
@@ -476,6 +495,34 @@ impl<D, C: Clone> CompositionGraph<D, C> {
     }
 }
 
+impl<D, C: Clone> Index<PackageId> for CompositionGraph<D, C> {
+    type Output = Package;
+
+    fn index(&self, index: PackageId) -> &Self::Output {
+        let package = self.packages.get(index.id).expect("package id out of bounds");
+        
+        if package.nonce != index.nonce {
+            panic!("package nonce mismatch for id {:?}", index);
+        }
+        
+        &package.package
+    }
+}
+
+#[derive(Debug)]
+struct PackageWrapper {
+    package: Package,
+    nonce: usize,
+}
+
+impl Deref for PackageWrapper {
+    type Target = Package;
+
+    fn deref(&self) -> &Self::Target {
+        &self.package
+    }
+}
+
 trait InstanceShadower<D, C: Clone> {
     fn shadow_func(
         &self,
@@ -615,6 +662,7 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct PackageId {
     id: usize,
+    nonce: usize,
 }
 
 #[derive(Derivative)]
