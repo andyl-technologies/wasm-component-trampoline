@@ -125,7 +125,10 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         };
 
         for (package_id, package) in &self.packages {
-            let package_id = PackageId { id: package_id, nonce: package.nonce };
+            let package_id = PackageId {
+                id: package_id,
+                nonce: package.nonce,
+            };
             let package_ty = &self.types[package.ty()];
 
             for (_use_name, use_type) in &package_ty.uses {
@@ -276,14 +279,14 @@ impl<D, C: Clone> CompositionGraph<D, C> {
 
         Ok(instance)
     }
-    
+
     /// Gets a reference to the type collection of the graph.
     pub fn types(&self) -> &wac_types::Types {
         &self.types
     }
-    
+
     /// Gets a mutable reference to the type collection of the graph.
-    /// 
+    ///
     /// This type collection is used to define types directly in the graph.
     pub fn types_mut(&mut self) -> &mut wac_types::Types {
         &mut self.types
@@ -499,12 +502,15 @@ impl<D, C: Clone> Index<PackageId> for CompositionGraph<D, C> {
     type Output = Package;
 
     fn index(&self, index: PackageId) -> &Self::Output {
-        let package = self.packages.get(index.id).expect("package id out of bounds");
-        
+        let package = self
+            .packages
+            .get(index.id)
+            .expect("package id out of bounds");
+
         if package.nonce != index.nonce {
             panic!("package nonce mismatch for id {:?}", index);
         }
-        
+
         &package.package
     }
 }
