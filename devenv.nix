@@ -52,6 +52,7 @@
   '';
 
   git-hooks.hooks.actionlint.enable = true;
+  git-hooks.hooks.check-merge-conflicts.enable = true;
   git-hooks.hooks.nixfmt-rfc-style.enable = true;
   git-hooks.hooks.vale.enable = true;
 
