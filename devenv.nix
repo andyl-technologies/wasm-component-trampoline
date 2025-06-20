@@ -8,6 +8,7 @@
 {
   packages = with pkgs; [
     cargo-nextest
+    cargo-vet
     cargo-watch
     git
     jq

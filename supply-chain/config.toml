@@ -1,0 +1,73 @@
+
+# cargo-vet config file
+
+[cargo-vet]
+version = "0.10"
+
+[imports.bytecode-alliance]
+url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-chain/audits.toml"
+
+[imports.google]
+url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
+
+[imports.mozilla]
+url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+
+[policy.wasm-component-trampoline]
+audit-as-crates-io = true
+
+[[exemptions.addr2line]]
+version = "0.24.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.derivative]]
+version = "2.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.embedded-io]]
+version = "0.6.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.fallible-iterator]]
+version = "0.3.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.futures-task]]
+version = "0.3.31"
+criteria = "safe-to-deploy"
+
+[[exemptions.futures-util]]
+version = "0.3.31"
+criteria = "safe-to-deploy"
+
+[[exemptions.itertools]]
+version = "0.14.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.miniz_oxide]]
+version = "0.8.8"
+criteria = "safe-to-deploy"
+
+[[exemptions.object]]
+version = "0.36.7"
+criteria = "safe-to-deploy"
+
+[[exemptions.once_cell]]
+version = "1.21.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.psm]]
+version = "0.1.26"
+criteria = "safe-to-deploy"
+
+[[exemptions.redox_syscall]]
+version = "0.5.12"
+criteria = "safe-to-deploy"
+
+[[exemptions.snafu]]
+version = "0.8.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.snafu-derive]]
+version = "0.8.6"
+criteria = "safe-to-deploy"
