@@ -58,6 +58,18 @@ jobs:
       - name: Run tests
         run: devenv shell miri-test
 
+  dependency-check:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    if: ${{ github.actor != 'dependabot[bot]'}}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v4
+
   coverage:
     strategy:
       matrix:
