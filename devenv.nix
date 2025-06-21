@@ -41,14 +41,14 @@
   };
 
   enterTest = ''
-    set -e
+    set -ex
     cargo fmt --check --all
     cargo check --workspace --all-targets
     cargo nextest run --workspace
     for target in wasm32-unknown-unknown wasm32-wasip2; do
       cargo build --workspace --target ''${target}
     done
-    tests/runner/build.sh
+    build-runner
   '';
 
   git-hooks.hooks.actionlint.enable = true;
@@ -68,10 +68,33 @@
     '';
   };
 
+  scripts."build-runner" = {
+    description = "Build the wasm runner";
+    exec = ''
+      set -ex
+
+      TARGET_DIR="$(
+        cargo metadata --no-deps --format-version 1 | \
+          ${pkgs.jq}/bin/jq -r '.target_directory' \
+      )"
+      readonly WASM_TARGET_DIR="''${TARGET_DIR}/wasm32-unknown-unknown/release"
+
+      for x in kvstore logger application; do
+        cargo build --target wasm32-unknown-unknown --release -p "$x"
+        ${pkgs.wasm-tools}/bin/wasm-tools component new \
+          "''${WASM_TARGET_DIR}/$x.wasm" > \
+          "''${WASM_TARGET_DIR}/$x.component.wasm"
+      done
+
+      cargo run -p runner --bin runner --release
+      cargo run -p runner --bin async-runner --release
+    '';
+  };
+
   scripts."wasm-trampoline-coverage" = {
     description = "Run wasm-trampoline-coverage";
     exec = ''
-      tests/runner/build.sh >/dev/null
+      build-runner
       cargo llvm-cov clean --workspace
       cargo llvm-cov nextest --workspace --no-report --release
       cargo llvm-cov run --bin runner -p runner --release --no-report
