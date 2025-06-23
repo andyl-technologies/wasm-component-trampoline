@@ -8,7 +8,6 @@ on:
 permissions:
   actions: read
   contents: write
-  pull-requests: write
 
 jobs:
   tests:
@@ -69,12 +68,21 @@ jobs:
         uses: actions/checkout@v4
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
+      - name: OSSF Scorecard action
+        uses: ossf/scorecard-action@v2.4.2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: false
 
   coverage:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
