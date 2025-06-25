@@ -63,7 +63,7 @@ fn _assert_async_trampoline_object_safe(_object: &dyn AsyncTrampoline<()>) {
 }
 
 /// Data structure that holds the common context for a guest call to a WASM component function.
-pub struct GuestCallData<'c, D, C> {
+pub struct GuestCallData<'c, D: 'static, C> {
     store: StoreContextMut<'c, D>,
     function: &'c Func,
     context: &'c C,
@@ -74,7 +74,7 @@ pub struct GuestCallData<'c, D, C> {
     results: &'c mut [Val],
 }
 
-impl<'c, D, C> GuestCallData<'c, D, C> {
+impl<'c, D: 'static, C> GuestCallData<'c, D, C> {
     /// Returns the WASM runtime store context.
     pub fn store(&self) -> StoreContext<'_, D> {
         self.store.as_context()
@@ -119,11 +119,11 @@ impl<'c, D, C> GuestCallData<'c, D, C> {
 ///
 /// It's expected that the `call` method will be called to execute the function call in all cases,
 /// unless an error occurs during the setup of the call.
-pub struct GuestCall<'c, D, C> {
+pub struct GuestCall<'c, D: 'static, C> {
     data: GuestCallData<'c, D, C>,
 }
 
-impl<'c, D, C> GuestCall<'c, D, C> {
+impl<'c, D: 'static, C> GuestCall<'c, D, C> {
     /// Calls the underlying WASM component function with the provided arguments and results.
     ///
     /// Returns an error if the function call fails, or a `GuestResult` containing the results of
@@ -154,7 +154,7 @@ impl<D, C> DerefMut for GuestCall<'_, D, C> {
 ///
 /// It's expected that the `call_async` method will be called to execute the function call in all
 /// cases, unless an error occurs during the setup of the call.
-pub struct AsyncGuestCall<'c, D: Send, C> {
+pub struct AsyncGuestCall<'c, D: Send + 'static, C> {
     data: GuestCallData<'c, D, C>,
 }
 
@@ -188,11 +188,11 @@ impl<D: Send, C> DerefMut for AsyncGuestCall<'_, D, C> {
 
 /// A result of a guest call to a WASM component function, which contains the returned value(s) of
 /// the underlying WASM call.
-pub struct GuestResult<'c, D, C> {
+pub struct GuestResult<'c, D: 'static, C> {
     context: GuestCallData<'c, D, C>,
 }
 
-impl<D, C> GuestResult<'_, D, C> {
+impl<D: 'static, C> GuestResult<'_, D, C> {
     /// Returns an immutable reference to the results of the WASM function call.
     #[must_use]
     pub fn results(&self) -> &[Val] {
@@ -204,7 +204,7 @@ impl<D, C> GuestResult<'_, D, C> {
     }
 }
 
-impl<'c, D, C> Deref for GuestResult<'c, D, C> {
+impl<'c, D: 'static, C> Deref for GuestResult<'c, D, C> {
     type Target = GuestCallData<'c, D, C>;
 
     fn deref(&self) -> &Self::Target {
@@ -219,11 +219,11 @@ impl<D, C> DerefMut for GuestResult<'_, D, C> {
 }
 
 /// Like `GuestResult`, but for asynchronous WASM function calls.
-pub struct AsyncGuestResult<'c, D: Send, C> {
+pub struct AsyncGuestResult<'c, D: Send + 'static, C> {
     context: GuestCallData<'c, D, C>,
 }
 
-impl<'c, D: Send, C> AsyncGuestResult<'c, D, C> {
+impl<'c, D: Send + 'static, C> AsyncGuestResult<'c, D, C> {
     /// Returns an immutable reference to the results of the WASM function call.
     pub fn results(&self) -> &[Val] {
         self.context.results
@@ -339,7 +339,8 @@ pub struct InterfaceTrampoline<T, C> {
 impl<T, C> InterfaceTrampoline<T, C> {
     /// Runs the specified function with the given arguments and results, using the trampoline for
     /// execution interception.
-    pub fn bounce<'c, D>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn bounce<'c, D: 'static>(
         &'c self,
         function: &'c Func,
         store: StoreContextMut<'c, D>,
@@ -367,6 +368,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
     }
 
     /// Like `bounce`, but for asynchronous function calls.
+    #[allow(clippy::too_many_arguments)]
     pub async fn bounce_async<'c, D>(
         &'c self,
         function: &'c Func,
@@ -378,7 +380,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
         results: &'c mut [Val],
     ) -> Result<AsyncGuestResult<'c, D, C>, anyhow::Error>
     where
-        D: Send,
+        D: Send + 'static,
         C: Send + Sync,
         T: AsyncTrampoline<D, C>,
     {

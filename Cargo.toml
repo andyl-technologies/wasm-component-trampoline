@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "33.0.1"
+version = "34.0.1-pre"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -38,8 +38,8 @@ async = [
 anyhow = "1"
 derivative = "2"
 semver = "1"
-wasmtime = { version = "33.0.1", default-features = false }
-wit-bindgen = { version = "0.42", default-features = false, features = [
+wasmtime = { version = "34", default-features = false }
+wit-bindgen = { version = "0.43", default-features = false, features = [
   "macros",
 ]}
 
