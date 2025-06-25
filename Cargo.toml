@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "34.0.1-pre"
+version = "34.0.1-pre1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -50,7 +50,7 @@ semver.workspace = true
 indexmap = "2"
 slab = "0.4"
 snafu = "0.8"
-wac-types = "0.6"
+wac-types = "0.7"
 wasmtime = { workspace = true, features = [
   "addr2line",
   "component-model",
