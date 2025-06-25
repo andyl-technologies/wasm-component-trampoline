@@ -21,6 +21,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -43,6 +47,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -64,6 +72,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: ${{ github.actor != 'dependabot[bot]'}}
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: 'Dependency Review'
@@ -84,6 +96,10 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -120,6 +136,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
 

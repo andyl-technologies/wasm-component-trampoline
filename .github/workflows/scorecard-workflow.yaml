@@ -17,6 +17,10 @@ jobs:
       id-token: write
       security-events: write
     steps:
+      - name: Audit all outbound runner calls
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
