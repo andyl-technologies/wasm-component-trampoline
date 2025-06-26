@@ -779,3 +779,47 @@ pub enum InstantiatePackageError {
     #[snafu(display("Missing interface export {}", path))]
     MissingInterfaceExport { path: ForeignInterfacePath },
 }
+
+#[cfg(test)]
+mod tests {
+    // Simple async trampoline that just passes calls through
+
+    use std::sync::Arc;
+
+    struct PassthroughTrampoline;
+    impl crate::Trampoline<(), ()> for PassthroughTrampoline {
+        fn bounce<'c>(
+            &self,
+            mut _call: crate::GuestCall<'c, (), ()>,
+        ) -> Result<crate::GuestResult<'c, (), ()>, anyhow::Error> {
+            todo!()
+        }
+    }
+
+    #[test]
+    fn test_add_duplicate_package() {
+        const VERSION: semver::Version = semver::Version::new(1, 0, 0);
+        let pkg = || {
+            let trampoline: Arc<dyn crate::Trampoline<(), ()>> = Arc::new(PassthroughTrampoline {});
+            crate::PackageTrampoline::with_default_context(trampoline, ())
+        };
+        let mut graph = crate::CompositionGraph::<()>::new();
+        let test_component = wat::parse_str(
+            r#"
+(component
+  (core module (;0;)
+    (memory (;0;) 16)
+    (export "memory" (memory 0))
+  )
+)"#,
+        )
+        .unwrap();
+
+        graph
+            .add_package("test".to_string(), VERSION, test_component.clone(), pkg())
+            .expect("Failed to add package");
+        graph
+            .add_package("test".to_string(), VERSION, test_component, pkg())
+            .expect_err("Expected to fail adding duplicate package");
+    }
+}
