@@ -684,13 +684,13 @@ struct InterfaceExport<D, C: Clone> {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum AddPackageError {
-    #[snafu(display("Duplicate package: {}@{:?}", name, version))]
+    #[snafu(display("Duplicate package: {name}@{version:?}"))]
     DuplicatePackage { name: String, version: Version },
 
-    #[snafu(display("Failed to parse package: {}", source))]
+    #[snafu(display("Failed to parse package: {source}"))]
     PackageParseError { source: anyhow::Error },
 
-    #[snafu(display("Failed to parse import '{}': {}", interface, source))]
+    #[snafu(display("Failed to parse import '{interface}': {source}"))]
     ImportParseError {
         interface: String,
         source: InterfacePathParseError,
@@ -700,38 +700,33 @@ pub enum AddPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiateError {
-    #[snafu(display("Package id '{:?}' not found", id))]
+    #[snafu(display("Package id '{id:?}' not found"))]
     PackageNotFound { id: PackageId },
 
-    #[snafu(display("Failed to load package: {}", source))]
+    #[snafu(display("Failed to load package: {source}"))]
     LoadPackageError { source: LoadPackageError },
 
-    #[snafu(display(
-        "Failed to instantiate package dependency '{}@{:?}': {}",
-        name,
-        version,
-        source
-    ))]
+    #[snafu(display("Failed to instantiate package dependency '{name}@{version:?}': {source}"))]
     InstantiatePackageDependencyError {
         name: String,
         version: Option<Version>,
         source: InstantiatePackageError,
     },
 
-    #[snafu(display("Failed to instantiate wasm component: {}", source))]
+    #[snafu(display("Failed to instantiate wasm component: {source}"))]
     ComponentInstantiationError { source: anyhow::Error },
 }
 
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum LoadPackageError {
-    #[snafu(display("Package import cycle detected: {:?}", cycle))]
+    #[snafu(display("Package import cycle detected: {cycle:?}"))]
     PackageCycle { cycle: Vec<String> },
 
-    #[snafu(display("Package dependency {} not found", package_name))]
+    #[snafu(display("Package dependency {package_name} not found"))]
     MissingPackageDependency { package_name: String },
 
-    #[snafu(display("Cannot resolve package version for {}@{:?}", name, version))]
+    #[snafu(display("Cannot resolve package version for {name}@{version:?}"))]
     CannotResolvePackageVersion {
         name: String,
         version: Option<Version>,
@@ -741,41 +736,35 @@ pub enum LoadPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiatePackageError {
-    #[snafu(display("Failed to instantiate wasm component: {}", source))]
+    #[snafu(display("Failed to instantiate wasm component: {source}"))]
     ComponentInstantiationError { source: anyhow::Error },
 
-    #[snafu(display("Failed to create linker instance: {}", source))]
+    #[snafu(display("Failed to create linker instance: {source}"))]
     LinkerInstanceError { source: anyhow::Error },
 
-    #[snafu(display("Instance is missing interface export with name '{}'", interface_name))]
+    #[snafu(display("Instance is missing interface export with name '{interface_name}'"))]
     InstanceMissingInterfaceExport { interface_name: String },
 
     #[snafu(display(
-        "Instance is missing interface func export with name '{}/{}'",
-        interface_name,
-        func_name
+        "Instance is missing interface func export with name '{interface_name}/{func_name}'",
     ))]
     InstanceMissingInterfaceFuncExport {
         interface_name: String,
         func_name: String,
     },
 
-    #[snafu(display(
-        "Failed to retrieve component function '{}/{}'",
-        interface_name,
-        func_name
-    ))]
+    #[snafu(display("Failed to retrieve component function '{interface_name}/{func_name}'"))]
     ComponentFuncRetrievalError {
         interface_name: String,
         func_name: String,
     },
 
-    #[snafu(display("Failed to instantiate function: {}", source))]
+    #[snafu(display("Failed to instantiate function: {source}"))]
     LinkFuncInstantiationError { source: anyhow::Error },
 
     #[snafu(display("Invalid trampoline sync/async call match"))]
     InvalidTrampolineSynchronicity,
 
-    #[snafu(display("Missing interface export {}", path))]
+    #[snafu(display("Missing interface export {path}"))]
     MissingInterfaceExport { path: ForeignInterfacePath },
 }
