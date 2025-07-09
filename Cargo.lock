@@ -1033,8 +1033,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
+name = "wasm-component-semver"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a48fb363ef76df3491db627d05e0b74380f110de4cbb45a2c4778548fb9560a9"
+dependencies = [
+ "derivative",
+ "semver",
+]
+
+[[package]]
 name = "wasm-component-trampoline"
-version = "34.0.2-pre1"
+version = "34.1.1"
 dependencies = [
  "anyhow",
  "derivative",
@@ -1043,6 +1053,7 @@ dependencies = [
  "slab",
  "snafu",
  "wac-types",
+ "wasm-component-semver",
  "wasmtime",
 ]
 
