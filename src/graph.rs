@@ -1,5 +1,4 @@
 use crate::path::{ForeignInterfacePath, InterfacePath, InterfacePathParseError};
-use crate::semver::VersionMap;
 use crate::{DynInterfaceTrampoline, DynPackageTrampoline};
 use derivative::Derivative;
 use indexmap::{IndexMap, IndexSet};
@@ -12,6 +11,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 use wac_types::{InterfaceId, ItemKind, Package};
+use wasm_component_semver::VersionMap;
 use wasmtime::component::{Component, Instance, LinkerInstance};
 use wasmtime::{AsContextMut, component};
 

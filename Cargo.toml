@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "34.0.2-pre1"
+version = "34.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -38,6 +38,7 @@ async = [
 anyhow = "1"
 derivative = "2"
 semver = "1"
+wasm-component-semver = "1"
 wasmtime = { version = "34", default-features = false }
 wit-bindgen = { version = "0.43", default-features = false, features = [
   "macros",
@@ -47,6 +48,7 @@ wit-bindgen = { version = "0.43", default-features = false, features = [
 anyhow.workspace = true
 derivative.workspace = true
 semver.workspace = true
+wasm-component-semver.workspace = true
 indexmap = "2"
 slab = "0.4"
 snafu = "0.8"
