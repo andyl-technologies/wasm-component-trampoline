@@ -1,0 +1,14 @@
+[toolchain]
+channel = "nightly-2025-06-16"
+targets = [ "wasm32-unknown-unknown", "wasm32v1-none", "wasm32-wasip2" ]
+profile = "default"
+components = [
+  "cargo",
+  "clippy",
+  "clippy-preview",
+  "llvm-tools-preview",
+  "miri",
+  "rust-analyzer",
+  "rustc",
+  "rustfmt"
+]
