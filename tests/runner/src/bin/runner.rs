@@ -13,6 +13,7 @@ async fn main() -> anyhow::Result<()> {
 #[cfg(not(target_family = "wasm"))]
 mod runner {
     use anyhow::Error;
+    use clap::Parser;
     use semver::Version;
     use std::path::Path;
 
@@ -20,6 +21,8 @@ mod runner {
     use tokio::fs;
     use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, Trampoline};
     use wasmtime::{Config, Engine, Store, component::Linker};
+
+    use runner::cli::Args;
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
@@ -99,6 +102,8 @@ mod runner {
     }
 
     pub async fn main() -> anyhow::Result<()> {
+        let _args = Args::parse();
+
         let verbose = false; // TODO(bill): command line option
         // Configure the WebAssembly engine
         let mut config = Config::new();
