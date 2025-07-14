@@ -23,6 +23,7 @@
       perSystem =
         {
           pkgs,
+          lib,
           system,
           ...
         }:
@@ -35,7 +36,14 @@
             };
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-          src = craneLib.cleanCargoSource ./.;
+          witFilter = path: _type: builtins.match ".*wit$" path != null;
+          srcFilter = path: type: (witFilter path type) || (craneLib.filterCargoSources path type);
+
+          src = lib.cleanSourceWith {
+            src = ./.;
+            filter = srcFilter;
+            name = "source";
+          };
           versionInfo = craneLib.crateNameFromCargoToml { inherit src; };
           commonArgs = {
             inherit (versionInfo) pname version;
