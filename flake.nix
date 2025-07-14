@@ -92,6 +92,13 @@
                 cargoExtraArgs = "--all";
               }
             );
+
+            nextest = craneLib.cargoNextest (
+              commonCheckArgs
+              // {
+                cargoExtraArgs = "--workspace";
+              }
+            );
           };
         };
     };
