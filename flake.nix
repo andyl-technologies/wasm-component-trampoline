@@ -34,6 +34,27 @@
               sha256 = "9h1rTC6CFU7/Q1ltpCZ9rKVnY8WzwAktn0/6PANIWgs=";
             };
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchain;
+
+          src = craneLib.cleanCargoSource ./.;
+          versionInfo = craneLib.crateNameFromCargoToml { inherit src; };
+          commonArgs = {
+            inherit (versionInfo) pname version;
+            inherit src;
+
+            nativeBuildInputs = [
+              pkgs.rustPlatform.bindgenHook
+            ];
+
+            strictDeps = true;
+            doCheck = false;
+          };
+
+          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+          commonCheckArgs = commonArgs // {
+            inherit cargoArtifacts;
+            doCheck = true;
+          };
         in
         {
           _module.args = {
@@ -54,6 +75,15 @@
               wasm-tools
               wasmtime
             ];
+          };
+
+          checks = {
+            format = craneLib.cargoFmt (
+              commonCheckArgs
+              // {
+                cargoExtraArgs = "--all";
+              }
+            );
           };
         };
     };
