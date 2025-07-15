@@ -11,7 +11,7 @@
   };
 
   outputs =
-    { flake-parts, ... }@inputs:
+    { flake-parts, nixpkgs, ... }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -66,6 +66,7 @@
           );
 
           commonCheckArgs = commonArgs // {
+            nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ pkgs.cargo-nextest ];
             inherit cargoArtifacts;
             doCheck = true;
           };
@@ -73,6 +74,13 @@
         {
           _module.args = {
             inherit craneLib;
+
+            pkgs = import nixpkgs {
+              inherit system;
+              overlays = [
+                (import ./nix/cargo-llvm.nix rustToolchain)
+              ];
+            };
           };
 
           devShells.default = craneLib.devShell {
@@ -152,6 +160,16 @@
               commonCheckArgs
               // {
                 cargoExtraArgs = "--workspace";
+              }
+            );
+
+            coverage-tests = craneLib.cargoLlvmCov (
+              commonCheckArgs
+              // {
+                pname = "wasm-trampoline-coverage-tests";
+                inherit cargoArtifacts;
+                cargoLlvmCovCommand = "nextest";
+                cargoLlvmCovExtraArgs = "--ignore-filename-regex 'nix/store' --workspace --cobertura --output-path $out";
               }
             );
           };
