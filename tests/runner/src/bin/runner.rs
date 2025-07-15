@@ -13,13 +13,16 @@ async fn main() -> anyhow::Result<()> {
 #[cfg(not(target_family = "wasm"))]
 mod runner {
     use anyhow::Error;
+    use clap::Parser;
     use semver::Version;
-    use std::path::Path;
+    use std::path::PathBuf;
 
     use std::sync::Arc;
     use tokio::fs;
     use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, Trampoline};
     use wasmtime::{Config, Engine, Store, component::Linker};
+
+    use runner::cli::Args;
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
@@ -63,28 +66,22 @@ mod runner {
         }
     }
 
-    // TODO(bill): directory from command line
-    const WASM_DIR: &str = "wasm32-unknown-unknown/release/";
-
-    // TODO(bill): packages from command line
     async fn add_package(
         graph: &mut CompositionGraph<AppData>,
+        wasm_dir: &PathBuf,
         path: &str,
         name: &str,
         version: Version,
     ) -> Result<wasm_component_trampoline::PackageId, wasm_component_trampoline::AddPackageError>
     {
         eprintln!("Loading {path} component...");
-        let wasm_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../..")
-            .join("target")
-            .join(WASM_DIR);
+
         let wasm_file = format!("{path}.component.wasm").to_string();
         let pkg_bytes = fs::read(wasm_dir.join(&wasm_file))
             .await
             .unwrap_or_else(|_| {
                 panic!(
-                    "Failed to read {}/{wasm_file} Make sure it's been compiled",
+                    "failed to read {}/{wasm_file}; make sure it's been compiled!",
                     wasm_dir.display()
                 )
             });
@@ -99,7 +96,8 @@ mod runner {
     }
 
     pub async fn main() -> anyhow::Result<()> {
-        let verbose = false; // TODO(bill): command line option
+        let args = Args::parse();
+
         // Configure the WebAssembly engine
         let mut config = Config::new();
         config.wasm_component_model(true);
@@ -123,18 +121,38 @@ mod runner {
         let mut graph = CompositionGraph::<AppData>::new();
 
         // Load the logger component
-        add_package(&mut graph, "logger", "test:logging", Version::new(1, 1, 1)).await?;
-        add_package(&mut graph, "logger", "test:logging", Version::new(1, 1, 1))
-            .await
-            .expect_err("Duplicate logger component should not be allowed");
+        add_package(
+            &mut graph,
+            &args.wasm_dir,
+            "logger",
+            "test:logging",
+            Version::new(1, 1, 1),
+        )
+        .await?;
+        add_package(
+            &mut graph,
+            &args.wasm_dir,
+            "logger",
+            "test:logging",
+            Version::new(1, 1, 1),
+        )
+        .await
+        .expect_err("Duplicate logger component should not be allowed");
 
         // Load the KV store component
-        let _kvstore_id =
-            add_package(&mut graph, "kvstore", "test:kvstore", Version::new(2, 1, 6)).await?;
+        let _kvstore_id = add_package(
+            &mut graph,
+            &args.wasm_dir,
+            "kvstore",
+            "test:kvstore",
+            Version::new(2, 1, 6),
+        )
+        .await?;
 
         // Load the application component
         let app_id = add_package(
             &mut graph,
+            &args.wasm_dir,
             "application",
             "test:application",
             Version::new(0, 4, 0),
@@ -143,7 +161,7 @@ mod runner {
 
         // Instantiate the components
         eprintln!("Instantiating components...");
-        if verbose {
+        if args.verbose {
             eprintln!("graph: {graph:#?}");
         }
 
