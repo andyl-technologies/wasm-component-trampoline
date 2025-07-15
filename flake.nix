@@ -22,6 +22,7 @@
 
       perSystem =
         {
+          self',
           pkgs,
           lib,
           system,
@@ -57,7 +58,12 @@
             doCheck = false;
           };
 
-          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+          cargoArtifacts = craneLib.buildDepsOnly (
+            commonArgs
+            // {
+              cargoExtraArgs = "--workspace";
+            }
+          );
 
           commonCheckArgs = commonArgs // {
             inherit cargoArtifacts;
@@ -85,15 +91,64 @@
             ];
           };
 
+          packages = {
+            runner = craneLib.mkCargoDerivation (
+              commonArgs
+              // {
+                pname = "runner";
+                inherit cargoArtifacts;
+                nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ pkgs.wasm-tools ];
+
+                buildPhaseCargoCommand = ''
+                  pushd tests/runner
+                  cargo build --release
+                  popd
+
+                  for x in kvstore logger application; do
+                    cargo build --target wasm32-unknown-unknown --release -p "$x"
+                    wasm-tools component new \
+                      "./target/wasm32-unknown-unknown/release/$x.wasm" \
+                      > "$x.component.wasm"
+                  done
+                '';
+
+                installPhase = ''
+                  runHook preInstall
+
+                  mkdir -p $out/bin $out/share
+
+                  cp target/release/{async-runner,runner} $out/bin
+                  cp *.component.wasm $out/share
+
+                  runHook postInstall
+                '';
+              }
+            );
+          };
+
           checks = {
-            format = craneLib.cargoFmt (
+            cargo-fmt = craneLib.cargoFmt (
               commonCheckArgs
               // {
                 cargoExtraArgs = "--all";
               }
             );
 
-            nextest = craneLib.cargoNextest (
+            # To run this test properly, use `nix run .#checks.<arch>.test-runners`
+            test-runners = pkgs.writeShellApplication {
+              name = "run-wasm-entrypoint";
+              runtimeInputs = [
+                self'.packages.runner
+              ];
+              text = ''
+                WASM_ARTIFACTS="${self'.packages.runner}/share"
+
+                runner -w "$WASM_ARTIFACTS"
+                async-runner -w "$WASM_ARTIFACTS"
+              '';
+            };
+
+            cargo-nextest = craneLib.cargoNextest (
               commonCheckArgs
               // {
                 cargoExtraArgs = "--workspace";
