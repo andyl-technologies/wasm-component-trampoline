@@ -2,7 +2,7 @@
 set -ex
 
 TARGET_DIR=$(printf "%s/wasm32-unknown-unknown/release" "$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')")
-readonly WASM_TARGET_DIR="${TARGET_DIR}"
+readonly WASM_TARGET_DIR="$TARGET_DIR"
 
 for x in kvstore logger application; do
 	cargo build --target wasm32-unknown-unknown --release -p "$x"
@@ -11,5 +11,5 @@ for x in kvstore logger application; do
 		"${WASM_TARGET_DIR}/$x.component.wasm"
 done
 
-cargo run -p runner --bin runner --release
-cargo run -p runner --bin async-runner --release
+cargo run -p runner --bin runner --release -- -w "$WASM_TARGET_DIR"
+cargo run -p runner --bin async-runner --release -- -w "$WASM_TARGET_DIR"
