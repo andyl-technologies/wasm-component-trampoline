@@ -172,6 +172,20 @@
                 cargoLlvmCovExtraArgs = "--ignore-filename-regex 'nix/store' --workspace --cobertura --output-path $out";
               }
             );
+
+            wasm32-wasip2-compile-check = craneLib.buildPackage (
+              commonArgs
+              // {
+                cargoExtraArgs = "--workspace --target wasm32-unknown-unknown";
+              }
+            );
+
+            wasm32-unknown-unknown-compile-check = craneLib.buildPackage (
+              commonArgs
+              // {
+                cargoExtraArgs = "--workspace --target wasm32-wasip2";
+              }
+            );
           };
         };
     };
