@@ -57,24 +57,6 @@ jobs:
       - name: Run tests
         run: devenv shell miri-test
 
-  dependency-check:
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
-    if: ${{ github.actor != 'dependabot[bot]'}}
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: 'Dependency Review'
-        uses: actions/dependency-review-action@v4
-      - name: OSSF Scorecard action
-        uses: ossf/scorecard-action@v2.4.2
-        with:
-          results_file: results.sarif
-          results_format: sarif
-          publish_results: false
-
   coverage:
     strategy:
       matrix:

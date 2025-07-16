@@ -1165,7 +1165,7 @@ dependencies = [
 
 [[package]]
 name = "wasm-component-trampoline"
-version = "34.1.1"
+version = "34.1.2-pre"
 dependencies = [
  "anyhow",
  "derivative",
