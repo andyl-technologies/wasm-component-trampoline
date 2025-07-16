@@ -12,7 +12,10 @@ impl exports::test::application::greeter::Guest for Store {
     }
 
     fn set_name(name: String) {
-        test::logging::logger::log(format!("setting name to {}", name).as_str());
+        test::logging::logger::log(
+            test::types::types::Level::Info,
+            format!("setting name to {}", name).as_str(),
+        );
         test::kvstore::store::set("name", name.as_str());
     }
 }

@@ -131,16 +131,18 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             };
             let package_ty = &self.types[package.ty()];
 
-            for (_use_name, use_type) in &package_ty.uses {
-                let Some(import_name) = &self.types[use_type.interface].id else {
+            for (import_name, import_kind) in &package_ty.imports {
+                let ItemKind::Instance(interface_id) = import_kind else {
                     continue;
                 };
 
-                import(package_id, import_name)?;
-            }
-
-            for (import_name, import_kind) in &package_ty.imports {
-                if !matches!(import_kind, ItemKind::Instance(_)) {
+                // If the interface defines no functions, skip it.
+                let interface = &self.types[*interface_id];
+                let interface_has_func = interface
+                    .exports
+                    .iter()
+                    .any(|(_item_name, item_kind)| matches!(item_kind, ItemKind::Func(_)));
+                if !interface_has_func {
                     continue;
                 }
 
