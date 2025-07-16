@@ -1,0 +1,13 @@
+package test:types@1.0.0;
+
+interface types {
+    variant level {
+        debug,
+        info,
+        error,
+    }
+}
+
+world all-types {
+    export types;
+}

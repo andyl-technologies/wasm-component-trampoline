@@ -1,7 +1,9 @@
 package test:logging@1.1.0;
 
 interface logger {
-    log: func(msg: string);
+    use test:types/types@1.0.0.{level};
+
+    log: func(lvl: level, msg: string);
 }
 
 world logging {
