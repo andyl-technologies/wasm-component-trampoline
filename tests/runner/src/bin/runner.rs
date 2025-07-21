@@ -17,11 +17,13 @@ mod runner {
     use semver::Version;
     use std::path::PathBuf;
 
+    use regex::Regex;
     use runner::cli::Args;
     use std::sync::Arc;
-    use regex::Regex;
     use tokio::fs;
-    use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, ImportRule, RegexMatchFilter, Trampoline};
+    use wasm_component_trampoline::{
+        CompositionGraph, GuestCall, GuestResult, ImportRule, RegexMatchFilter, Trampoline,
+    };
     use wasmtime::component::HasSelf;
     use wasmtime::{Config, Engine, Store, component::Linker};
 
