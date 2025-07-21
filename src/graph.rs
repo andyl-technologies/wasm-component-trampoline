@@ -1,5 +1,5 @@
 use crate::path::{ForeignInterfacePath, InterfacePath, InterfacePathParseError};
-use crate::{DynInterfaceTrampoline, DynPackageTrampoline};
+use crate::{DynInterfaceTrampoline, DynPackageTrampoline, ImportFilter, ImportRule};
 use derivative::Derivative;
 use indexmap::{IndexMap, IndexSet};
 use semver::Version;
@@ -17,7 +17,8 @@ use wasmtime::{AsContextMut, component};
 
 /// A graph for composing multiple WebAssembly components into a single linker, while allowing for
 /// automatic insertion of "trampoline" functions between cross-component calls.
-#[derive(Derivative, Debug)]
+#[derive(Derivative)]
+#[derivative(Debug)]
 #[derivative(Default(bound = ""))]
 pub struct CompositionGraph<D, C: Clone = ()> {
     nonce: usize,
@@ -25,7 +26,9 @@ pub struct CompositionGraph<D, C: Clone = ()> {
     packages: Slab<PackageWrapper>,
     package_map: HashMap<String, VersionMap<PackageId>>,
     exported_interfaces: HashMap<ForeignInterfacePath, InterfaceExport<D, C>>,
-    imported_interfaces: HashMap<PackageId, Vec<ForeignInterfacePath>>,
+    imported_interfaces: HashMap<PackageId, IndexSet<ForeignInterfacePath>>,
+    #[derivative(Debug = "ignore")]
+    import_filter: Box<dyn ImportFilter>,
 }
 
 impl<D, C: Clone> CompositionGraph<D, C> {
@@ -33,6 +36,15 @@ impl<D, C: Clone> CompositionGraph<D, C> {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Filters package imports for graph inclusion.
+    /// The filter can be removed by using the default `ImportRule::default()` filter.
+    pub fn set_import_filter<F>(&mut self, filter: F)
+    where
+        F: ImportFilter + 'static,
+    {
+        self.import_filter = Box::new(filter);
     }
 
     /// Adds a package (component) to the composition graph.
@@ -107,7 +119,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             }
         }
 
-        let mut import = |package_id: PackageId, import_name: &str| {
+        let mut import = |package_id: PackageId, interface_id: InterfaceId, import_name: &str| {
             let import_interface_path = InterfacePath::from_str(import_name).context(
                 add_package_error::ImportParseSnafu {
                     interface: import_name.to_string(),
@@ -115,10 +127,29 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             )?;
 
             if let Some(import) = import_interface_path.into_foreign() {
+                match self.import_filter.filter_rule(&import) {
+                    ImportRule::Skip => return Ok(()),
+
+                    ImportRule::Include => {
+                        // If the interface defines no functions, skip it.
+                        let interface = &self.types[interface_id];
+                        let interface_has_func = interface
+                            .exports
+                            .iter()
+                            .any(|(_item_name, item_kind)| matches!(item_kind, ItemKind::Func(_)));
+                        if !interface_has_func {
+                            return Ok(());
+                        }
+                    }
+
+                    ImportRule::Force => { /* continue */ }
+                }
+
+                // Add the interface to the list of imports.
                 self.imported_interfaces
                     .entry(package_id)
                     .or_default()
-                    .push(import);
+                    .insert(import);
             }
 
             Ok(())
@@ -136,17 +167,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                     continue;
                 };
 
-                // If the interface defines no functions, skip it.
-                let interface = &self.types[*interface_id];
-                let interface_has_func = interface
-                    .exports
-                    .iter()
-                    .any(|(_item_name, item_kind)| matches!(item_kind, ItemKind::Func(_)));
-                if !interface_has_func {
-                    continue;
-                }
-
-                import(package_id, import_name)?;
+                import(package_id, *interface_id, import_name)?;
             }
         }
 
@@ -308,6 +329,13 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             load_order.extend(load_stack.drain(offset..).rev());
 
             if let Some(cycle_start) = load_stack.get_index_of(&package_id) {
+                let self_import = (cycle_start == load_stack.len() - 1)
+                    && load_stack.index(cycle_start) == &package_id;
+
+                if self_import {
+                    continue;
+                }
+
                 let mut cycle = load_stack
                     .iter()
                     .skip(cycle_start)
@@ -338,7 +366,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             let imports = self
                 .imported_interfaces
                 .get(&package_id)
-                .map(Vec::as_slice)
+                .map(|s| s.as_slice())
                 .unwrap_or_default();
 
             for import in imports {
@@ -689,10 +717,10 @@ pub enum AddPackageError {
     #[snafu(display("Duplicate package: {name}@{version:?}"))]
     DuplicatePackage { name: String, version: Version },
 
-    #[snafu(display("Failed to parse package: {source}"))]
+    #[snafu(display("Failed to parse package"))]
     PackageParseError { source: anyhow::Error },
 
-    #[snafu(display("Failed to parse import '{interface}': {source}"))]
+    #[snafu(display("Failed to parse import '{interface}'"))]
     ImportParseError {
         interface: String,
         source: InterfacePathParseError,
@@ -705,17 +733,17 @@ pub enum InstantiateError {
     #[snafu(display("Package id '{id:?}' not found"))]
     PackageNotFound { id: PackageId },
 
-    #[snafu(display("Failed to load package: {source}"))]
+    #[snafu(display("Failed to load package"))]
     LoadPackageError { source: LoadPackageError },
 
-    #[snafu(display("Failed to instantiate package dependency '{name}@{version:?}': {source}"))]
+    #[snafu(display("Failed to instantiate package dependency '{name}@{version:?}'"))]
     InstantiatePackageDependencyError {
         name: String,
         version: Option<Version>,
         source: InstantiatePackageError,
     },
 
-    #[snafu(display("Failed to instantiate wasm component: {source}"))]
+    #[snafu(display("Failed to instantiate wasm component"))]
     ComponentInstantiationError { source: anyhow::Error },
 }
 
@@ -738,10 +766,10 @@ pub enum LoadPackageError {
 #[derive(Snafu, Debug)]
 #[snafu(module)]
 pub enum InstantiatePackageError {
-    #[snafu(display("Failed to instantiate wasm component: {source}"))]
+    #[snafu(display("Failed to instantiate wasm component"))]
     ComponentInstantiationError { source: anyhow::Error },
 
-    #[snafu(display("Failed to create linker instance: {source}"))]
+    #[snafu(display("Failed to create linker instance"))]
     LinkerInstanceError { source: anyhow::Error },
 
     #[snafu(display("Instance is missing interface export with name '{interface_name}'"))]
@@ -761,7 +789,7 @@ pub enum InstantiatePackageError {
         func_name: String,
     },
 
-    #[snafu(display("Failed to instantiate function: {source}"))]
+    #[snafu(display("Failed to instantiate function"))]
     LinkFuncInstantiationError { source: anyhow::Error },
 
     #[snafu(display("Invalid trampoline sync/async call match"))]

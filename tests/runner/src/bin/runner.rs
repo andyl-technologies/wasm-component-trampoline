@@ -17,21 +17,46 @@ mod runner {
     use semver::Version;
     use std::path::PathBuf;
 
-    use std::sync::Arc;
-    use tokio::fs;
-    use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, Trampoline};
-    use wasmtime::{Config, Engine, Store, component::Linker};
-
     use runner::cli::Args;
+    use std::sync::Arc;
+    use regex::Regex;
+    use tokio::fs;
+    use wasm_component_trampoline::{CompositionGraph, GuestCall, GuestResult, ImportRule, RegexMatchFilter, Trampoline};
+    use wasmtime::component::HasSelf;
+    use wasmtime::{Config, Engine, Store, component::Linker};
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
         async: false,
     });
 
+    mod kvstore {
+        wasmtime::component::bindgen!({
+            path: "../wasm/kvstore/wit",
+            async: false,
+        });
+    }
+
+    mod logger {
+        wasmtime::component::bindgen!({
+            path: "../wasm/logger/wit",
+            async: false,
+        });
+    }
+
+    #[derive(Default, Debug)]
+    struct HostInterface;
+
+    impl logger::test::logging::system::Host for HostInterface {
+        fn println(&mut self, msg: String) {
+            eprintln!("{msg}")
+        }
+    }
+
     // Define our store data type
-    #[derive(Debug)]
+    #[derive(Default, Debug)]
     struct AppData {
+        host: HostInterface,
         stack_depth: usize,
     }
 
@@ -104,21 +129,22 @@ mod runner {
         config.async_support(false);
 
         let engine = Engine::new(&config)?;
-        let mut linker = Linker::new(&engine);
-        let mut store = Store::new(&engine, AppData { stack_depth: 0 });
+        let mut linker: Linker<AppData> = Linker::new(&engine);
+        let mut store = Store::new(&engine, AppData::default());
 
-        // Add global functions to the linker.
-        linker.root().func_wrap(
-            "println",
-            |_store: wasmtime::StoreContextMut<'_, AppData>, args: (String,)| {
-                let (message,) = args;
-                eprintln!("{}", message);
-                Ok(())
-            },
+        // Add host interfaces to the linker.
+        logger::test::logging::system::add_to_linker::<_, HasSelf<_>>(
+            &mut linker,
+            |ctx: &mut _| &mut ctx.host,
         )?;
 
         // Create our composition graph
         let mut graph = CompositionGraph::<AppData>::new();
+
+        graph.set_import_filter(RegexMatchFilter::new(
+            Regex::new(r"^test:logging/system")?,
+            ImportRule::Skip,
+        ));
 
         // Load the logger component
         add_package(

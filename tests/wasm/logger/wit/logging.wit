@@ -1,5 +1,9 @@
 package test:logging@1.1.1;
 
+interface system {
+    println: func(msg: string);
+}
+
 interface logger {
     use test:types/types@1.0.0.{level};
 
@@ -7,7 +11,6 @@ interface logger {
 }
 
 world logging {
+    import system;
     export logger;
-
-    import println: func(msg: string);
 }

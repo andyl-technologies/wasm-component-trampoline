@@ -50,6 +50,7 @@ derivative.workspace = true
 semver.workspace = true
 wasm-component-semver.workspace = true
 indexmap = "2"
+regex = "1"
 slab = "0.4"
 snafu = "0.8"
 wac-types = "0.7"

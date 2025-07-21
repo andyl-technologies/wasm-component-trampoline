@@ -15,7 +15,7 @@ impl exports::test::logging::logger::Guest for Logger {
             Level::Error => "ERROR",
         };
 
-        println(format!("[{lvl_str}]: {msg}").as_str());
+        test::logging::system::println(format!("[{lvl_str}]: {msg}").as_str());
     }
 }
 
