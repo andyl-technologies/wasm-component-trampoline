@@ -14,31 +14,58 @@ async fn main() -> anyhow::Result<()> {
 mod runner {
     use anyhow::Error;
     use clap::Parser;
+    use regex::Regex;
+    use runner::cli::Args;
     use semver::Version;
     use std::path::PathBuf;
     use std::pin::Pin;
     use std::sync::Arc;
     use tokio::fs;
     use wasm_component_trampoline::{
-        AsyncGuestCall, AsyncGuestResult, AsyncTrampoline, CompositionGraph, PackageTrampoline,
+        AsyncGuestCall, AsyncGuestResult, AsyncTrampoline, CompositionGraph, ImportRule,
+        PackageTrampoline, RegexMatchFilter,
     };
+    use wasmtime::component::HasSelf;
     use wasmtime::{Config, Engine, Store, component::Linker};
-
-    use runner::cli::Args;
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
         async: true,
     });
 
+    mod kvstore {
+        wasmtime::component::bindgen!({
+            path: "../wasm/kvstore/wit",
+            async: true,
+        });
+    }
+
+    mod logger {
+        wasmtime::component::bindgen!({
+            path: "../wasm/logger/wit",
+            async: true,
+        });
+    }
+
+    #[derive(Default, Debug)]
+    struct HostInterface;
+
+    impl logger::test::logging::system::Host for HostInterface {
+        async fn println(&mut self, msg: String) {
+            eprintln!("{msg}")
+        }
+    }
+
     // Define our store data type
-    #[derive(Debug)]
+    #[derive(Default, Debug)]
     struct AppData {
+        host: HostInterface,
         stack_depth: usize,
     }
 
     // Simple async trampoline that just passes calls through
-    struct PassthroughTrampoline {}
+    struct PassthroughTrampoline;
+
     impl AsyncTrampoline<AppData, ()> for PassthroughTrampoline {
         fn bounce_async<'c>(
             &'c self,
@@ -109,21 +136,22 @@ mod runner {
         config.async_support(true);
 
         let engine = Engine::new(&config)?;
-        let mut linker = Linker::new(&engine);
-        let mut store = Store::new(&engine, AppData { stack_depth: 0 });
+        let mut linker: Linker<AppData> = Linker::new(&engine);
+        let mut store = Store::new(&engine, AppData::default());
 
-        // Add global functions to the linker.
-        linker.root().func_wrap(
-            "println",
-            |_store: wasmtime::StoreContextMut<'_, AppData>, args: (String,)| {
-                let (message,) = args;
-                eprintln!("{}", message);
-                Ok(())
-            },
+        // Add host interfaces to the linker.
+        logger::test::logging::system::add_to_linker::<_, HasSelf<_>>(
+            &mut linker,
+            |ctx: &mut _| &mut ctx.host,
         )?;
 
         // Create our composition graph
         let mut graph = CompositionGraph::<AppData>::new();
+
+        graph.set_import_filter(RegexMatchFilter::new(
+            Regex::new(r"^test:logging/system")?,
+            ImportRule::Skip,
+        ));
 
         // Load the logger component
         add_package(
@@ -134,6 +162,7 @@ mod runner {
             Version::new(1, 1, 1),
         )
         .await?;
+
         add_package(
             &mut graph,
             &args.wasm_dir,
