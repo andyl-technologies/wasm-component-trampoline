@@ -47,7 +47,7 @@
     cargo check --workspace --all-targets
     cargo nextest run --workspace
     for target in wasm32-unknown-unknown wasm32-wasip2; do
-      cargo build --workspace --target ''${target}
+      cargo build --release --workspace --target ''${target}
     done
     tests/runner/build.sh
   '';
