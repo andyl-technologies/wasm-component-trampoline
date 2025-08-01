@@ -284,7 +284,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                 linker,
                 &mut store,
                 engine,
-                &shadow_interfaces,
+                shadow_interfaces,
             )
             .await
             .with_context(|_err| {
@@ -507,7 +507,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                     )?;
 
                 let shadow_func = shadow_instance
-                    .get_func(&mut store, &shadow_func_export_id)
+                    .get_func(&mut store, shadow_func_export_id)
                     .ok_or_else(|| InstantiatePackageError::ComponentFuncRetrievalError {
                         interface_name: interface_full_name.to_string(),
                         func_name: export_name.to_string(),
@@ -537,9 +537,10 @@ impl<D, C: Clone> Index<PackageId> for CompositionGraph<D, C> {
             .get(index.id)
             .expect("package id out of bounds");
 
-        if package.nonce != index.nonce {
-            panic!("package nonce mismatch for id {:?}", index);
-        }
+        assert_eq!(
+            package.nonce, index.nonce,
+            "package nonce mismatch for id {index:?}"
+        );
 
         &package.package
     }
