@@ -203,7 +203,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
         let component = Component::new(engine, package.bytes())
             .context(instantiate_error::ComponentInstantiationSnafu)?;
 
-        for shadow_package_id in load_order.into_iter() {
+        for shadow_package_id in load_order {
             if shadow_package_id == package_id {
                 break;
             }
@@ -304,6 +304,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
     }
 
     /// Gets a reference to the type collection of the graph.
+    #[must_use]
     pub fn types(&self) -> &wac_types::Types {
         &self.types
     }
@@ -350,8 +351,9 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                         .map(|package| {
                             self.packages
                                 .get(package.id)
-                                .map(|package| package.name().to_string())
-                                .unwrap_or("{{UNKNOWN_PACKAGE}}".to_string())
+                                .map_or("{{UNKNOWN_PACKAGE}}".to_string(), |package| {
+                                    package.name().to_string()
+                                })
                         })
                         .collect(),
                 });
@@ -366,7 +368,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             let imports = self
                 .imported_interfaces
                 .get(&package_id)
-                .map(|s| s.as_slice())
+                .map(IndexSet::as_slice)
                 .unwrap_or_default();
 
             for import in imports {
