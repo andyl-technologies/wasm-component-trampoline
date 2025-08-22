@@ -29,20 +29,17 @@ mod runner {
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
-        async: false,
     });
 
     mod kvstore {
         wasmtime::component::bindgen!({
             path: "../wasm/kvstore/wit",
-            async: false,
         });
     }
 
     mod logger {
         wasmtime::component::bindgen!({
             path: "../wasm/logger/wit",
-            async: false,
         });
     }
 

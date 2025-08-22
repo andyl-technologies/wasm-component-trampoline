@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "35.0.1-pre"
+version = "36.0.0"
 edition = "2024"
 rust-version = "1.86"
 license = "MIT"
@@ -39,8 +39,8 @@ anyhow = "1"
 derivative = "2"
 semver = "1"
 wasm-component-semver = "1"
-wasmtime = { version = "35", default-features = false }
-wit-bindgen = { version = "0.43", default-features = false, features = [
+wasmtime = { version = "36", default-features = false }
+wit-bindgen = { version = "0.44", default-features = false, features = [
   "macros",
 ]}
 
@@ -53,7 +53,7 @@ indexmap = "2"
 regex = "1"
 slab = "0.4"
 snafu = "0.8"
-wac-types = "0.7"
+wac-types = "0.8"
 wasmtime = { workspace = true, features = [
   "addr2line",
   "component-model",
