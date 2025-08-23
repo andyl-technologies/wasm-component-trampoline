@@ -30,20 +30,23 @@ mod runner {
 
     wasmtime::component::bindgen!({
         path: "../wasm/application/wit",
-        async: true,
+        imports: { default: async },
+        exports: { default: async },
     });
 
     mod kvstore {
         wasmtime::component::bindgen!({
             path: "../wasm/kvstore/wit",
-            async: true,
+            imports: { default: async },
+            exports: { default: async },
         });
     }
 
     mod logger {
         wasmtime::component::bindgen!({
             path: "../wasm/logger/wit",
-            async: true,
+            imports: { default: async },
+            exports: { default: async },
         });
     }
 
