@@ -417,13 +417,12 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .instantiate(&mut store, &component)
             .context(instantiate_package_error::ComponentInstantiationSnafu)?;
 
-        self.shadow_package(
+        self.shadow_package::<SyncInstanceShadower>(
             package,
             Rc::new(shadow_instance),
             linker,
             store,
             interfaces,
-            SyncInstanceShadower,
         )
     }
 
@@ -447,24 +446,22 @@ impl<D, C: Clone> CompositionGraph<D, C> {
             .await
             .context(instantiate_package_error::ComponentInstantiationSnafu)?;
 
-        self.shadow_package(
+        self.shadow_package::<AsyncInstanceShadower>(
             package,
             Rc::new(shadow_instance),
             linker,
             store,
             interfaces,
-            AsyncInstanceShadower,
         )
     }
 
-    fn shadow_package(
+    fn shadow_package<T: InstanceShadower<D, C>>(
         &self,
         package: &Package,
         shadow_instance: Rc<Instance>,
         linker: &mut component::Linker<D>,
         mut store: impl AsContextMut<Data = D>,
         interfaces: &IndexSet<String>,
-        shadower: impl InstanceShadower<D, C>,
     ) -> Result<(), InstantiatePackageError> {
         for interface_name in interfaces {
             let interface_path = ForeignInterfacePath::new(
@@ -515,7 +512,7 @@ impl<D, C: Clone> CompositionGraph<D, C> {
                         func_name: export_name.to_string(),
                     })?;
 
-                shadower.shadow_func(
+                T::shadow_func(
                     &mut front_instance,
                     export_name,
                     shadow_func,
@@ -564,7 +561,6 @@ impl Deref for PackageWrapper {
 
 trait InstanceShadower<D, C: Clone> {
     fn shadow_func(
-        &self,
         instance: &mut LinkerInstance<D>,
         export_name: &str,
         shadow_func: component::Func,
@@ -579,7 +575,6 @@ struct SyncInstanceShadower;
 
 impl<D: 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C> for SyncInstanceShadower {
     fn shadow_func(
-        &self,
         instance: &mut LinkerInstance<D>,
         export_name: &str,
         shadow_func: component::Func,
@@ -628,7 +623,6 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
     for AsyncInstanceShadower
 {
     fn shadow_func(
-        &self,
         instance: &mut LinkerInstance<D>,
         export_name: &str,
         shadow_func: component::Func,
