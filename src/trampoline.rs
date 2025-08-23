@@ -74,8 +74,9 @@ pub struct GuestCallData<'c, D: 'static, C> {
     results: &'c mut [Val],
 }
 
-impl<'c, D: 'static, C> GuestCallData<'c, D, C> {
+impl<D: 'static, C> GuestCallData<'_, D, C> {
     /// Returns the WASM runtime store context.
+    #[must_use]
     pub fn store(&self) -> StoreContext<'_, D> {
         self.store.as_context()
     }
@@ -223,8 +224,9 @@ pub struct AsyncGuestResult<'c, D: Send + 'static, C> {
     context: GuestCallData<'c, D, C>,
 }
 
-impl<'c, D: Send + 'static, C> AsyncGuestResult<'c, D, C> {
+impl<D: Send + 'static, C> AsyncGuestResult<'_, D, C> {
     /// Returns an immutable reference to the results of the WASM function call.
+    #[must_use]
     pub fn results(&self) -> &[Val] {
         self.context.results
     }
@@ -245,7 +247,7 @@ impl<'c, D: Send, C> Deref for AsyncGuestResult<'c, D, C> {
     }
 }
 
-impl<'c, D: Send, C> DerefMut for AsyncGuestResult<'c, D, C> {
+impl<D: Send, C> DerefMut for AsyncGuestResult<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.context
     }

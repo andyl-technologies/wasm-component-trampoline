@@ -64,7 +64,7 @@ impl Display for ForeignInterfacePath {
             self.interface_name,
             self.version
                 .as_ref()
-                .map_or_else(|| "".to_string(), |v| format!("@{v}"))
+                .map_or(String::new(), |v| format!("@{v}"))
         )
     }
 }
@@ -173,11 +173,11 @@ impl Display for InterfacePath {
             "{}{}{}",
             self.package_name
                 .as_ref()
-                .map_or("".to_string(), |p| format!("{p}/")),
+                .map_or(String::new(), |p| format!("{p}/")),
             self.interface_name,
             self.version
                 .as_ref()
-                .map_or_else(|| "".to_string(), |v| format!("@{v}")),
+                .map_or(String::new(), |v| format!("@{v}")),
         )
     }
 }
