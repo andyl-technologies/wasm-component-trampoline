@@ -37,6 +37,7 @@ async = [
 [workspace.dependencies]
 anyhow = "1"
 derivative = "2"
+regex = "1"
 semver = "1"
 wasm-component-semver = "1"
 wasmtime = { version = "36", default-features = false }
@@ -47,10 +48,10 @@ wit-bindgen = { version = "0.46", default-features = false, features = [
 [target.'cfg(unix)'.dependencies]
 anyhow.workspace = true
 derivative.workspace = true
+indexmap = "2"
+regex.workspace = true
 semver.workspace = true
 wasm-component-semver.workspace = true
-indexmap = "2"
-regex = "1"
 slab = "0.4"
 snafu = "0.8"
 wac-types = "0.8"
