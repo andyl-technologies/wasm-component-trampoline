@@ -663,6 +663,7 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
                     .context(instantiate_package_error::LinkFuncInstantiationSnafu)
             }
 
+            #[cfg(feature = "async")]
             DynInterfaceTrampoline::Async(trampoline) => {
                 let fn_trampoline = trampoline.clone();
 

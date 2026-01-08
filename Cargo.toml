@@ -31,7 +31,11 @@ default = [
 ]
 async = [
     "wasmtime/async",
-    "wasmtime/component-model-async",
+    # Note: component-model-async is NOT enabled because it prevents nested
+    # component calls via trampolines. The concurrent model requires all calls
+    # to go through run_concurrent at the top level, which doesn't work with
+    # our trampoline pattern that intercepts cross-component calls.
+    # "wasmtime/component-model-async",
 ]
 
 [workspace.dependencies]
