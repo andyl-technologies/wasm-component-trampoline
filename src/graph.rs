@@ -596,7 +596,7 @@ impl<D: 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C> for Sy
                 let fn_trampoline = trampoline.clone();
 
                 instance
-                    .func_new(export_name, move |store, arguments, result| {
+                    .func_new(export_name, move |store, _ty, arguments, result| {
                         let mut result = fn_trampoline.bounce(
                             &shadow_func,
                             store,
@@ -645,7 +645,7 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
                 let fn_trampoline = trampoline.clone();
 
                 instance
-                    .func_new(export_name, move |store, arguments, result| {
+                    .func_new(export_name, move |store, _ty, arguments, result| {
                         let mut result = fn_trampoline.bounce(
                             &shadow_func,
                             store,
@@ -663,11 +663,12 @@ impl<D: Send + 'static, C: Clone + Send + Sync + 'static> InstanceShadower<D, C>
                     .context(instantiate_package_error::LinkFuncInstantiationSnafu)
             }
 
+            #[cfg(feature = "async")]
             DynInterfaceTrampoline::Async(trampoline) => {
                 let fn_trampoline = trampoline.clone();
 
                 instance
-                    .func_new_async(export_name, move |store, arguments, result| {
+                    .func_new_async(export_name, move |store, _ty, arguments, result| {
                         let export_name = fn_export_name.clone();
                         let trampoline = fn_trampoline.clone();
                         let interface_path = fn_interface_path.clone();

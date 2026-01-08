@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "37.0.0"
+version = "40.0.0-pre"
 edition = "2024"
 rust-version = "1.87"
 license = "MIT"
@@ -31,7 +31,11 @@ default = [
 ]
 async = [
     "wasmtime/async",
-    "wasmtime/component-model-async",
+    # Note: component-model-async is NOT enabled because it prevents nested
+    # component calls via trampolines. The concurrent model requires all calls
+    # to go through run_concurrent at the top level, which doesn't work with
+    # our trampoline pattern that intercepts cross-component calls.
+    # "wasmtime/component-model-async",
 ]
 
 [workspace.dependencies]
@@ -40,8 +44,8 @@ derivative = "2"
 regex = "1"
 semver = "1"
 wasm-component-semver = "1"
-wasmtime = { version = "37", default-features = false }
-wit-bindgen = { version = "0.46", default-features = false, features = [
+wasmtime = { version = "40", default-features = false }
+wit-bindgen = { version = "0.50", default-features = false, features = [
   "macros",
 ]}
 

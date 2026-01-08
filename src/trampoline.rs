@@ -8,6 +8,9 @@ use wac_types::FuncType;
 use wasmtime::component::{Func, Val};
 use wasmtime::{AsContext, AsContextMut, StoreContext, StoreContextMut};
 
+// Note: component-model-async feature is NOT used because it prevents nested
+// component calls via trampolines. We use the simpler call_async API instead.
+
 /// A trampoline is a mechanism to intercept WASM component function calls when switching
 /// component contexts.
 ///
@@ -36,6 +39,7 @@ fn _assert_trampoline_object_safe(_object: &dyn Trampoline<()>) {
 }
 
 /// Like `Trampoline`, but for asynchronous WASM function calls.
+#[cfg(feature = "async")]
 pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     fn bounce_async<'c>(
         &'c self,
@@ -46,6 +50,7 @@ pub trait AsyncTrampoline<D: Send, C: Send + Sync = ()>: Send + Sync + 'static {
     }
 }
 
+#[cfg(feature = "async")]
 impl<D: Send + 'static, C: Send + Sync + 'static> AsyncTrampoline<D, C>
     for Arc<dyn AsyncTrampoline<D, C>>
 {
@@ -58,6 +63,7 @@ impl<D: Send + 'static, C: Send + Sync + 'static> AsyncTrampoline<D, C>
     }
 }
 
+#[cfg(feature = "async")]
 fn _assert_async_trampoline_object_safe(_object: &dyn AsyncTrampoline<()>) {
     unreachable!("only used for compile time assertion");
 }
@@ -155,10 +161,12 @@ impl<D, C> DerefMut for GuestCall<'_, D, C> {
 ///
 /// It's expected that the `call_async` method will be called to execute the function call in all
 /// cases, unless an error occurs during the setup of the call.
+#[cfg(feature = "async")]
 pub struct AsyncGuestCall<'c, D: Send + 'static, C> {
     data: GuestCallData<'c, D, C>,
 }
 
+#[cfg(feature = "async")]
 impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
     /// Calls the underlying WASM component function with the provided arguments and results.
     ///
@@ -173,6 +181,7 @@ impl<'c, D: Send, C> AsyncGuestCall<'c, D, C> {
     }
 }
 
+#[cfg(feature = "async")]
 impl<'c, D: Send, C> Deref for AsyncGuestCall<'c, D, C> {
     type Target = GuestCallData<'c, D, C>;
 
@@ -181,6 +190,7 @@ impl<'c, D: Send, C> Deref for AsyncGuestCall<'c, D, C> {
     }
 }
 
+#[cfg(feature = "async")]
 impl<D: Send, C> DerefMut for AsyncGuestCall<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
@@ -220,10 +230,12 @@ impl<D, C> DerefMut for GuestResult<'_, D, C> {
 }
 
 /// Like `GuestResult`, but for asynchronous WASM function calls.
+#[cfg(feature = "async")]
 pub struct AsyncGuestResult<'c, D: Send + 'static, C> {
     context: GuestCallData<'c, D, C>,
 }
 
+#[cfg(feature = "async")]
 impl<D: Send + 'static, C> AsyncGuestResult<'_, D, C> {
     /// Returns an immutable reference to the results of the WASM function call.
     #[must_use]
@@ -239,6 +251,7 @@ impl<D: Send + 'static, C> AsyncGuestResult<'_, D, C> {
     }
 }
 
+#[cfg(feature = "async")]
 impl<'c, D: Send, C> Deref for AsyncGuestResult<'c, D, C> {
     type Target = GuestCallData<'c, D, C>;
 
@@ -247,6 +260,7 @@ impl<'c, D: Send, C> Deref for AsyncGuestResult<'c, D, C> {
     }
 }
 
+#[cfg(feature = "async")]
 impl<D: Send, C> DerefMut for AsyncGuestResult<'_, D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.context
@@ -370,6 +384,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
     }
 
     /// Like `bounce`, but for asynchronous function calls.
+    #[cfg(feature = "async")]
     #[allow(clippy::too_many_arguments)]
     pub async fn bounce_async<'c, D>(
         &'c self,
@@ -408,6 +423,7 @@ impl<T, C> InterfaceTrampoline<T, C> {
 #[derivative(Clone(bound = ""))]
 pub enum DynInterfaceTrampoline<D, C: Clone> {
     Sync(InterfaceTrampoline<Arc<dyn Trampoline<D, C>>, C>),
+    #[cfg(feature = "async")]
     Async(InterfaceTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>),
 }
 
@@ -422,6 +438,7 @@ impl<D, C: Clone> DynPackageTrampoline<D, C> for PackageTrampoline<Arc<dyn Tramp
     }
 }
 
+#[cfg(feature = "async")]
 impl<D, C: Clone> DynPackageTrampoline<D, C>
     for PackageTrampoline<Arc<dyn AsyncTrampoline<D, C>>, C>
 {
