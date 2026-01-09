@@ -63,17 +63,7 @@ jobs:
           use-sccache: true
 
       - name: Run tests
-        run: |
-          nix develop -c bash -c "
-            set -e
-            cargo fmt --check --all
-            cargo check --workspace --all-targets
-            cargo nextest run --workspace
-            for target in wasm32-unknown-unknown wasm32-wasip2; do
-              cargo build --release --workspace --target \$target
-            done
-            tests/runner/build.sh
-          "
+        run: nix run .#test
 
   test-miri:
     runs-on: ubuntu-latest
@@ -97,7 +87,7 @@ jobs:
           cache-all-crates: true
 
       - name: Run miri tests
-        run: nix develop .#miri -c bash -c 'cargo miri setup && cargo miri nextest run --workspace'
+        run: nix run .#miri-test
 
   coverage:
     runs-on: ubuntu-latest
@@ -122,17 +112,7 @@ jobs:
         uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Run coverage tests
-        run: |
-          nix develop -c bash -c '
-            set -e
-            tests/runner/build.sh >/dev/null
-            cargo llvm-cov clean --workspace
-            cargo llvm-cov nextest --workspace --no-report --release
-            cargo llvm-cov run --bin runner -p runner --release --no-report
-            cargo llvm-cov run --bin async-runner -p runner --release --no-report
-            cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
-            cargo llvm-cov report --release --lcov --output-path coverage.lcov
-          '
+        run: nix run .#coverage
 
       - name: Generate coverage report
         uses: clearlyip/code-coverage-report-action@17b6103ac2d3b9bb6c7a8562ac22a4c010d6d52f # v5
