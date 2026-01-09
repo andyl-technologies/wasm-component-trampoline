@@ -15,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup devenv
-        uses: andyl-technologies/github-actions/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Publish to crates.io
-        uses: katyo/publish-crates@v2
+        uses: katyo/publish-crates@02cc2f1ad653fb25c7d1ff9eb590a8a50d06186b # v2
         with:
           registry-token: ${{ secrets.CRATES_IO_REPO_PUBLISH_TOKEN }}
