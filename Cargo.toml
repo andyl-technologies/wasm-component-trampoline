@@ -20,7 +20,7 @@ categories = [ "wasm" ]
 
 [workspace.package]
 authors = ["ANDYL Open Source <oss@andyl.com>"]
-version = "40.0.0"
+version = "40.0.1-pre"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
