@@ -24,16 +24,14 @@
     targets = [
       "wasm32-unknown-unknown"
       "wasm32-wasip2"
-      "wasm32v1-none"
     ];
     components = [
       "cargo"
       "clippy"
-      "clippy-preview"
+      "llvm-tools-preview" # coverage
       "rust-analyzer"
       "rustc"
       "rustfmt"
-      "llvm-tools-preview"
     ];
   };
 
