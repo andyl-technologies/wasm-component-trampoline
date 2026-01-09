@@ -39,10 +39,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup devenv
-        uses: andyl-technologies/github-actions/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Setup Rust cache
-        uses: andyl-technologies/github-actions/rust-cache@master
+        uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
         with:
           cache-all-crates: true
           use-sccache: true
@@ -61,10 +61,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup devenv
-        uses: andyl-technologies/github-actions/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Setup Rust cache
-        uses: andyl-technologies/github-actions/rust-cache@master
+        uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
         with:
           cache-all-crates: true
 
@@ -84,16 +84,16 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup devenv
-        uses: andyl-technologies/github-actions/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Setup Rust cache
-        uses: andyl-technologies/github-actions/rust-cache@master
+        uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Run coverage tests
         run: devenv shell wasm-trampoline-coverage
 
       - name: Generate coverage report
-        uses: clearlyip/code-coverage-report-action@v5
+        uses: clearlyip/code-coverage-report-action@17b6103ac2d3b9bb6c7a8562ac22a4c010d6d52f # v5
         id: code_coverage_report_action
         if: ${{ github.actor != 'dependabot[bot]'}}
         with:
@@ -101,7 +101,7 @@ jobs:
           artifact_download_workflow_names: '"Run Tests",cron'
 
       - name: Add coverage PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2
         if:
           steps.code_coverage_report_action.outputs.file != '' &&
           github.event_name == 'pull_request' && (success() || failure())
@@ -120,10 +120,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup devenv
-        uses: andyl-technologies/github-actions/setup-devenv@master
+        uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
 
       - name: Verify crate publishing
-        uses: katyo/publish-crates@v2
+        uses: katyo/publish-crates@02cc2f1ad653fb25c7d1ff9eb590a8a50d06186b # v2
         with:
           dry-run: true
           ignore-unpublished-changes: false
