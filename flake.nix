@@ -3,7 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+
+    crane.url = "github:ipetkov/crane";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -29,6 +33,7 @@
       imports = [
         inputs.git-hooks-nix.flakeModule
         ./nix/toolchain.nix
+        ./nix/crane.nix
         ./nix/devshell.nix
         ./nix/apps.nix
         ./nix/checks.nix

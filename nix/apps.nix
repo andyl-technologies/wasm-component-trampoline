@@ -1,8 +1,16 @@
+# Apps for interactive development tasks
+# Note: These complement crane's checks by providing interactive workflows
 { ... }:
 {
   perSystem =
-    { pkgs, rustToolchains, ... }:
+    {
+      pkgs,
+      rustToolchains,
+      craneOutputs,
+      ...
+    }:
     let
+      # Common dependencies for apps
       commonDeps = [
         rustToolchains.stable
         pkgs.cargo-nextest
@@ -76,5 +84,8 @@
           }/bin/coverage";
         };
       };
+
+      # Export crane-built package as default
+      packages.default = craneOutputs.crate;
     };
 }
