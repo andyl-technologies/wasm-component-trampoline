@@ -6,6 +6,7 @@
       apps = {
         test = {
           type = "app";
+          meta.description = "Run full test suite (fmt, check, nextest, WASM builds)";
           program = toString (
             pkgs.writeShellScript "test" ''
               set -e
@@ -24,6 +25,7 @@
 
         miri-test = {
           type = "app";
+          meta.description = "Run memory safety tests with miri";
           program = toString (
             pkgs.writeShellScript "miri-test" ''
               set -ex
@@ -37,6 +39,7 @@
 
         coverage = {
           type = "app";
+          meta.description = "Generate coverage reports (cobertura XML and lcov)";
           program = toString (
             pkgs.writeShellScript "coverage" ''
               set -e
