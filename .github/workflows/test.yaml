@@ -56,14 +56,32 @@ jobs:
       - name: Check flake
         run: nix flake check --print-build-logs
 
+      - name: Setup devshell
+        uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
+
       - name: Setup Rust cache
         uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
         with:
           cache-all-crates: true
           use-sccache: true
 
+      - name: Check formatting
+        run: cargo fmt --check --all
+
+      - name: Check compilation
+        run: cargo check --workspace --all-targets
+
       - name: Run tests
-        run: nix run .#test
+        run: cargo nextest run --workspace
+
+      - name: Build WASM targets
+        run: |
+          for target in wasm32-unknown-unknown wasm32-wasip2; do
+            cargo build --release --workspace --target "$target"
+          done
+
+      - name: Build and run test runner
+        run: tests/runner/build.sh
 
   test-miri:
     runs-on: ubuntu-latest
@@ -81,13 +99,21 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
 
+      - name: Setup miri devshell
+        uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
+        with:
+          arguments: .#miri
+
       - name: Setup Rust cache
         uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
         with:
           cache-all-crates: true
 
+      - name: Setup miri
+        run: cargo miri setup
+
       - name: Run miri tests
-        run: nix run .#miri-test
+        run: cargo miri nextest run --workspace
 
   coverage:
     runs-on: ubuntu-latest
@@ -108,11 +134,24 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
 
+      - name: Setup devshell
+        uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
+
       - name: Setup Rust cache
         uses: andyl-technologies/github-actions/rust-cache@a1b683853d3459471b7661235be4b76eda58c652 # master
 
+      - name: Build test artifacts
+        run: tests/runner/build.sh >/dev/null
+
       - name: Run coverage tests
-        run: nix run .#coverage
+        run: |
+          WASM_DIR="target/wasm32-unknown-unknown/release"
+          cargo llvm-cov clean --workspace
+          cargo llvm-cov nextest --workspace --no-report --release
+          cargo llvm-cov run --bin runner -p runner --release --no-report -- --wasm-dir "$WASM_DIR"
+          cargo llvm-cov run --bin async-runner -p runner --release --no-report -- --wasm-dir "$WASM_DIR"
+          cargo llvm-cov report --release --cobertura --output-path coverage.cobertura.xml
+          cargo llvm-cov report --release --lcov --output-path coverage.lcov
 
       - name: Generate coverage report
         uses: clearlyip/code-coverage-report-action@17b6103ac2d3b9bb6c7a8562ac22a4c010d6d52f # v5
@@ -147,11 +186,8 @@ jobs:
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
 
-      - name: Verify crate publishing
-        uses: katyo/publish-crates@02cc2f1ad653fb25c7d1ff9eb590a8a50d06186b # v2
-        with:
-          dry-run: true
-          ignore-unpublished-changes: false
+      - name: Setup devshell
+        uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
 
       - name: Verify crate publishing
-        run: nix develop -c cargo publish --dry-run
+        run: cargo publish --dry-run
