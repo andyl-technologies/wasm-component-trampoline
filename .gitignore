@@ -3,9 +3,9 @@
 debug/
 target/
 
-# Devenv
-.devenv*
-devenv.local.nix
+# Nix
+result
+result-*
 
 # direnv
 .direnv
