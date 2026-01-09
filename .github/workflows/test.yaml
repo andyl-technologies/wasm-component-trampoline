@@ -2,8 +2,22 @@ name: 'Run Tests'
 
 on:
   pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'devenv*'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/test.yaml'
   push:
     branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'devenv*'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/test.yaml'
 
 permissions:
   actions: read
