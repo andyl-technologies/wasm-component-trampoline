@@ -16,7 +16,7 @@
         pkgs.cargo-nextest
         pkgs.wasm-tools
         pkgs.wasmtime
-        pkgs.llvmPackages.bintools
+        pkgs.llvmPackages_18.bintools
       ];
     in
     {

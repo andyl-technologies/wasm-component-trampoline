@@ -34,7 +34,7 @@
         meta.platforms = pkgs.lib.platforms.unix;
 
         nativeBuildInputs = [
-          pkgs.llvmPackages.bintools # for lld (WASM linking)
+          pkgs.llvmPackages_18.bintools
         ];
 
         # Environment for WASM builds
