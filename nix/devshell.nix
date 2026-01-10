@@ -1,3 +1,4 @@
+# Development shells using crane's devShell helper
 { inputs, ... }:
 {
   perSystem =
@@ -5,15 +6,18 @@
       config,
       pkgs,
       rustToolchains,
+      craneOutputs,
       ...
     }:
     {
       devShells = {
-        default = pkgs.mkShell {
-          name = "wasm-component-trampoline";
+        # Default shell using crane's devShell with additional tools
+        default = craneOutputs.craneLib.devShell {
+          # Include common build inputs from crane
+          inputsFrom = [ craneOutputs.crate ];
 
-          nativeBuildInputs = [
-            rustToolchains.stable
+          # Additional development tools
+          packages = [
             pkgs.cargo-nextest
             pkgs.cargo-vet
             pkgs.cargo-watch
@@ -22,19 +26,14 @@
             pkgs.jq
             pkgs.wasm-tools
             pkgs.wasmtime
-            pkgs.llvmPackages.bintools # Required for WASM linking
           ];
-
-          # Required for WASM builds on NixOS
-          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "lld";
-          CARGO_TARGET_WASM32_WASIP2_LINKER = "lld";
 
           # For rust-analyzer
           RUST_SRC_PATH = "${rustToolchains.stable}/lib/rustlib/src/rust/library";
 
           shellHook = ''
             ${config.pre-commit.installationScript}
-            echo "wasm-component-trampoline dev shell"
+            echo "wasm-component-trampoline dev shell (crane)"
           '';
         };
 

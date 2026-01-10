@@ -31,6 +31,7 @@ concurrency:
 permissions:
   actions: read
   contents: read  # Least privilege default
+  id-token: write  # Required for magic-nix-cache
 
 jobs:
   tests:
@@ -52,6 +53,10 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
+        with:
+          use-flakehub: false
+
+      - uses: DeterminateSystems/flake-checker-action@main
 
       - name: Check flake
         run: nix flake check --print-build-logs
@@ -98,6 +103,8 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
+        with:
+          use-flakehub: false
 
       - name: Setup miri devshell
         uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
@@ -133,6 +140,8 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
+        with:
+          use-flakehub: false
 
       - name: Setup devshell
         uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
@@ -185,6 +194,8 @@ jobs:
 
       - name: Setup Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@87e8236f46702ab0ce5a058b605a173ec88d618e  # v8
+        with:
+          use-flakehub: false
 
       - name: Setup devshell
         uses: nicknovitski/nix-develop@5da6ac475f1ffbcf54ee562fa3056646e146be95  # main
