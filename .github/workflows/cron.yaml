@@ -34,6 +34,6 @@ jobs:
         run: devenv shell wasm-trampoline-coverage
 
       - name: Generate coverage report
-        uses: clearlyip/code-coverage-report-action@17b6103ac2d3b9bb6c7a8562ac22a4c010d6d52f # v5
+        uses: clearlyip/code-coverage-report-action@9e2cd22e39153feba8b4477e4fefcc0b5e2727ba # v5
         with:
           filename: 'coverage.cobertura.xml'
