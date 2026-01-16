@@ -19,7 +19,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
 
       - name: Setup devenv
         uses: andyl-technologies/github-actions/setup-devenv@a1b683853d3459471b7661235be4b76eda58c652 # master
