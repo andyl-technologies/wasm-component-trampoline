@@ -154,7 +154,7 @@ jobs:
           cargo llvm-cov report --release --lcov --output-path coverage.lcov
 
       - name: Generate coverage report
-        uses: clearlyip/code-coverage-report-action@9e2cd22e39153feba8b4477e4fefcc0b5e2727ba # v5
+        uses: clearlyip/code-coverage-report-action@110af9d4ec87b6706f182fd90e3102af9e5203bf # v5
         id: code_coverage_report_action
         if: ${{ github.actor != 'dependabot[bot]'}}
         with:
